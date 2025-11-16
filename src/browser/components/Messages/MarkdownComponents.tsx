@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
 import React, { useState, useEffect } from "react";
 import { Mermaid } from "./Mermaid";
-import {
-  getShikiHighlighter,
-  mapToShikiLang,
-} from "@/browser/utils/highlighting/shikiHighlighter";
+import { getShikiHighlighter, mapToShikiLang } from "@/browser/utils/highlighting/shikiHighlighter";
 import { extractShikiLines, getShikiTheme } from "@/browser/utils/highlighting/shiki-shared";
 import { CopyButton } from "@/browser/components/ui/CopyButton";
 

@@ -1,8 +1,4 @@
-import {
-  getShikiHighlighter,
-  mapToShikiLang,
-  MAX_DIFF_SIZE_BYTES,
-} from "./shikiHighlighter";
+import { getShikiHighlighter, mapToShikiLang, MAX_DIFF_SIZE_BYTES } from "./shikiHighlighter";
 import { getShikiTheme } from "./shiki-shared";
 import type { DiffChunk } from "./diffChunking";
 
