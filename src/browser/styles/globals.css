@@ -190,7 +190,8 @@
   --color-error-bg-dark: hsl(0 33% 13%); /* #3c1f1f - dark error bg */
 
 
-[data-theme="light"] @theme {
+/* Light theme overrides using standard CSS selector */
+[data-theme="light"] {
   /* Mode Colors - Keep hue, adjust lightness for light backgrounds */
   --color-plan-mode: hsl(210 80% 45%);
   --color-plan-mode-hover: hsl(210 80% 38%);
