@@ -60,15 +60,15 @@ function AppInner() {
   // Auto-collapse sidebar on mobile by default
   const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState("sidebarCollapsed", isMobile);
-  
+
   // Theme state (global, not workspace-specific)
   const [theme, setTheme] = usePersistedState<"light" | "dark">(THEME_KEY, "dark");
-  
+
   // Apply theme to document root
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-  
+
   const defaultProjectPath = getFirstProjectPath(projects);
   const creationChatInputRef = useRef<ChatInputAPI | null>(null);
   const creationProjectPath = !selectedWorkspace
