@@ -1,5 +1,5 @@
 import { cn } from "@/common/lib/utils";
-import { useWorkspaceSidebarState } from "@/browser/stores/WorkspaceStore";
+import { canInterrupt, useWorkspaceSidebarState } from "@/browser/stores/WorkspaceStore";
 import { getStatusTooltip } from "@/browser/utils/ui/statusTooltip";
 import { memo, useMemo } from "react";
 import { Tooltip, TooltipWrapper } from "./Tooltip";
@@ -11,10 +11,10 @@ export const WorkspaceStatusDot = memo<{
   size?: number;
 }>(
   ({ workspaceId, lastReadTimestamp, onClick, size = 8 }) => {
-    const { canInterrupt, currentModel, agentStatus, recencyTimestamp } =
+    const { interruptType, currentModel, agentStatus, recencyTimestamp } =
       useWorkspaceSidebarState(workspaceId);
 
-    const streaming = canInterrupt;
+    const streaming = canInterrupt(interruptType);
 
     // Compute unread status if lastReadTimestamp provided (sidebar only)
     const unread = useMemo(() => {
@@ -35,7 +35,7 @@ export const WorkspaceStatusDot = memo<{
       [streaming, currentModel, agentStatus, unread, recencyTimestamp]
     );
 
-    const bgColor = canInterrupt ? "bg-blue-400" : unread ? "bg-gray-300" : "bg-muted-dark";
+    const bgColor = streaming ? "bg-blue-400" : unread ? "bg-gray-300" : "bg-muted-dark";
     const cursor = onClick && !streaming ? "cursor-pointer" : "cursor-default";
 
     return (

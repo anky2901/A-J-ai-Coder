@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
-import { useWorkspaceStoreRaw, type WorkspaceState } from "@/browser/stores/WorkspaceStore";
+import {
+  canInterrupt,
+  useWorkspaceStoreRaw,
+  type WorkspaceState,
+} from "@/browser/stores/WorkspaceStore";
 import { CUSTOM_EVENTS, type CustomEventType } from "@/common/constants/events";
 import { getAutoRetryKey, getRetryStateKey } from "@/common/constants/storage";
 import { getSendOptionsFromStorage } from "@/browser/utils/messages/sendOptions";
@@ -100,7 +104,7 @@ export function useResumeManager() {
     }
 
     // 1. Must have interrupted stream that's eligible for auto-retry (not currently streaming)
-    if (state.canInterrupt) return false; // Currently streaming
+    if (canInterrupt(state.interruptType)) return false; // Currently streaming
 
     if (!isEligibleForAutoRetry(state.messages, state.pendingStreamStartTime)) {
       return false;

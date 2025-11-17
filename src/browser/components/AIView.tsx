@@ -20,7 +20,11 @@ import { formatKeybind, KEYBINDS } from "@/browser/utils/ui/keybinds";
 import { useAutoScroll } from "@/browser/hooks/useAutoScroll";
 import { usePersistedState } from "@/browser/hooks/usePersistedState";
 import { useThinking } from "@/browser/contexts/ThinkingContext";
-import { useWorkspaceState, useWorkspaceAggregator } from "@/browser/stores/WorkspaceStore";
+import {
+  useWorkspaceState,
+  useWorkspaceAggregator,
+  canInterrupt,
+} from "@/browser/stores/WorkspaceStore";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import { getModelName } from "@/common/utils/ai/models";
 import type { DisplayedMessage } from "@/common/types/message";
@@ -227,7 +231,7 @@ const AIViewInner: React.FC<AIViewProps> = ({
   // Track if last message was interrupted or errored (for RetryBarrier)
   // Uses same logic as useResumeManager for DRY
   const showRetryBarrier = workspaceState
-    ? !workspaceState.canInterrupt &&
+    ? !canInterrupt(workspaceState.interruptType) &&
       hasInterruptedStream(workspaceState.messages, workspaceState.pendingStreamStartTime)
     : false;
 
@@ -235,7 +239,7 @@ const AIViewInner: React.FC<AIViewProps> = ({
   useAIViewKeybinds({
     workspaceId,
     currentModel: workspaceState?.currentModel ?? null,
-    canInterrupt: workspaceState?.canInterrupt ?? false,
+    canInterrupt: canInterrupt(workspaceState.interruptType),
     showRetryBarrier,
     currentWorkspaceThinking,
     setThinkingLevel,
@@ -284,8 +288,7 @@ const AIViewInner: React.FC<AIViewProps> = ({
     );
   }
 
-  // Extract state from workspace state
-  const { messages, canInterrupt, isCompacting, loading, currentModel } = workspaceState;
+  const { messages, interruptType, isCompacting, loading, currentModel } = workspaceState;
 
   // Get active stream message ID for token counting
   const activeStreamMessageId = aggregator.getActiveStreamMessageId();
@@ -296,6 +299,14 @@ const AIViewInner: React.FC<AIViewProps> = ({
 
   // Merge consecutive identical stream errors
   const mergedMessages = mergeConsecutiveStreamErrors(messages);
+
+  const model = currentModel ? getModelName(currentModel) : "";
+  const interrupting = interruptType === "hard";
+
+  const prefix = interrupting ? "⏸️ Interrupting " : "";
+  const action = interrupting ? "" : isCompacting ? "compacting..." : "streaming...";
+
+  const statusText = `${prefix}${model} ${action}`.trim();
 
   // When editing, find the cutoff point
   const editCutoffHistoryId = editingMessage
@@ -369,8 +380,8 @@ const AIViewInner: React.FC<AIViewProps> = ({
             onTouchMove={markUserInteraction}
             onScroll={handleScroll}
             role="log"
-            aria-live={canInterrupt ? "polite" : "off"}
-            aria-busy={canInterrupt}
+            aria-live={canInterrupt(interruptType) ? "polite" : "off"}
+            aria-busy={canInterrupt(interruptType)}
             aria-label="Conversation transcript"
             tabIndex={0}
             className="h-full overflow-y-auto p-[15px] leading-[1.5] break-words whitespace-pre-wrap"
@@ -429,21 +440,13 @@ const AIViewInner: React.FC<AIViewProps> = ({
                 </>
               )}
               <PinnedTodoList workspaceId={workspaceId} />
-              {canInterrupt && (
+              {canInterrupt(interruptType) && (
                 <StreamingBarrier
-                  statusText={
-                    isCompacting
-                      ? currentModel
-                        ? `${getModelName(currentModel)} compacting...`
-                        : "compacting..."
-                      : currentModel
-                        ? `${getModelName(currentModel)} streaming...`
-                        : "streaming..."
-                  }
+                  statusText={statusText}
                   cancelText={
                     isCompacting
                       ? `${formatKeybind(vimEnabled ? KEYBINDS.INTERRUPT_STREAM_VIM : KEYBINDS.INTERRUPT_STREAM_NORMAL)} cancel | ${formatKeybind(KEYBINDS.ACCEPT_EARLY_COMPACTION)} accept early`
-                      : `hit ${formatKeybind(vimEnabled ? KEYBINDS.INTERRUPT_STREAM_VIM : KEYBINDS.INTERRUPT_STREAM_NORMAL)} to cancel`
+                      : `hit ${formatKeybind(vimEnabled ? KEYBINDS.INTERRUPT_STREAM_VIM : KEYBINDS.INTERRUPT_STREAM_NORMAL)} to ${interruptType === "hard" ? "force" : ""} cancel`
                   }
                   tokenCount={
                     activeStreamMessageId
@@ -480,7 +483,7 @@ const AIViewInner: React.FC<AIViewProps> = ({
           editingMessage={editingMessage}
           onCancelEdit={handleCancelEdit}
           onEditLastUserMessage={handleEditLastUserMessage}
-          canInterrupt={canInterrupt}
+          canInterrupt={canInterrupt(interruptType)}
           onReady={handleChatInputReady}
         />
       </div>
