@@ -120,6 +120,12 @@ export default defineConfig(({ mode }) => ({
           pollInterval: 100
         }
       })
+    },	
+    hmr: {
+      // Configure HMR to use the correct host for remote access
+      host: devServerHost,
+      port: devServerPort,
+      protocol: "ws",
     },
   },
   preview: {
