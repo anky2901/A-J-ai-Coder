@@ -12,8 +12,10 @@ import {
   getProjectScopeId,
   getRuntimeKey,
   getTrunkBranchKey,
+  getTrunkSelectionKey,
 } from "@/common/constants/storage";
 import type { ProjectConfig } from "@/node/config";
+import { TRUNK_SELECTION } from "@/common/constants/workspace";
 
 import type { updatePersistedState } from "@/browser/hooks/usePersistedState";
 
@@ -71,6 +73,7 @@ describe("persistWorkspaceCreationPrefill", () => {
     expect(callMap.get(getInputKey(getPendingScopeId(projectPath)))).toBe("Ship it");
     expect(callMap.get(getModelKey(getProjectScopeId(projectPath)))).toBe("provider/model");
     expect(callMap.get(getTrunkBranchKey(projectPath))).toBe("main");
+    expect(callMap.get(getTrunkSelectionKey(projectPath))).toBe(TRUNK_SELECTION.CUSTOM);
     expect(callMap.get(getRuntimeKey(projectPath))).toBe("ssh dev");
   });
 
@@ -90,6 +93,7 @@ describe("persistWorkspaceCreationPrefill", () => {
     }
 
     expect(callMap.get(getTrunkBranchKey(projectPath))).toBeUndefined();
+    expect(callMap.get(getTrunkSelectionKey(projectPath))).toBe(TRUNK_SELECTION.DEFAULT);
     expect(callMap.get(getRuntimeKey(projectPath))).toBeUndefined();
   });
 

@@ -10,8 +10,10 @@ import {
   getProjectScopeId,
   getRuntimeKey,
   getTrunkBranchKey,
+  getTrunkSelectionKey,
 } from "@/common/constants/storage";
 import { RUNTIME_MODE, SSH_RUNTIME_PREFIX } from "@/common/types/runtime";
+import { TRUNK_SELECTION } from "@/common/constants/workspace";
 
 export type StartWorkspaceCreationDetail =
   CustomEventPayloads[typeof CUSTOM_EVENTS.START_WORKSPACE_CREATION];
@@ -69,9 +71,11 @@ export function persistWorkspaceCreationPrefill(
 
   if (detail.trunkBranch !== undefined) {
     const normalizedTrunk = detail.trunkBranch.trim();
+    const hasCustomTrunk = normalizedTrunk.length > 0;
+    persist(getTrunkBranchKey(projectPath), hasCustomTrunk ? normalizedTrunk : undefined);
     persist(
-      getTrunkBranchKey(projectPath),
-      normalizedTrunk.length > 0 ? normalizedTrunk : undefined
+      getTrunkSelectionKey(projectPath),
+      hasCustomTrunk ? TRUNK_SELECTION.CUSTOM : TRUNK_SELECTION.DEFAULT
     );
   }
 

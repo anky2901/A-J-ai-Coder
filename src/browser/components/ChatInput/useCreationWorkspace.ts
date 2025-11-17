@@ -5,6 +5,7 @@ import type { UIMode } from "@/common/types/mode";
 import type { ThinkingLevel } from "@/common/types/thinking";
 import { parseRuntimeString } from "@/browser/utils/chatCommands";
 import { useDraftWorkspaceSettings } from "@/browser/hooks/useDraftWorkspaceSettings";
+import type { TrunkSelection } from "@/common/constants/workspace";
 import { readPersistedState, updatePersistedState } from "@/browser/hooks/usePersistedState";
 import { useSendMessageOptions } from "@/browser/hooks/useSendMessageOptions";
 import { getModeKey, getProjectScopeId, getThinkingLevelKey } from "@/common/constants/storage";
@@ -35,7 +36,10 @@ function syncCreationPreferences(projectPath: string, workspaceId: string): void
 interface UseCreationWorkspaceReturn {
   branches: string[];
   trunkBranch: string;
+  trunkSelection: TrunkSelection;
+  customTrunkBranch: string;
   setTrunkBranch: (branch: string) => void;
+  setTrunkSelection: (selection: TrunkSelection) => void;
   runtimeMode: RuntimeMode;
   sshHost: string;
   setRuntimeOptions: (mode: RuntimeMode, host: string) => void;
@@ -62,7 +66,7 @@ export function useCreationWorkspace({
   const [isSending, setIsSending] = useState(false);
 
   // Centralized draft workspace settings with automatic persistence
-  const { settings, setRuntimeOptions, setTrunkBranch, getRuntimeString } =
+  const { settings, setRuntimeOptions, setTrunkBranch, setTrunkSelection, getRuntimeString } =
     useDraftWorkspaceSettings(projectPath, branches, recommendedTrunk);
 
   // Get send options from shared hook (uses project-scoped storage key)
@@ -145,7 +149,10 @@ export function useCreationWorkspace({
   return {
     branches,
     trunkBranch: settings.trunkBranch,
+    trunkSelection: settings.trunkSelection,
+    customTrunkBranch: settings.customTrunkBranch,
     setTrunkBranch,
+    setTrunkSelection,
     runtimeMode: settings.runtimeMode,
     sshHost: settings.sshHost,
     setRuntimeOptions,

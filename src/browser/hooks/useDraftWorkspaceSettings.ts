@@ -13,8 +13,10 @@ import {
   getModelKey,
   getRuntimeKey,
   getTrunkBranchKey,
+  getTrunkSelectionKey,
   getProjectScopeId,
 } from "@/common/constants/storage";
+import { DEFAULT_TRUNK_BRANCH, TRUNK_SELECTION, type TrunkSelection } from "@/common/constants/workspace";
 import type { UIMode } from "@/common/types/mode";
 import type { ThinkingLevel } from "@/common/types/thinking";
 
@@ -33,6 +35,8 @@ export interface DraftWorkspaceSettings {
   runtimeMode: RuntimeMode;
   sshHost: string;
   trunkBranch: string;
+  trunkSelection: TrunkSelection;
+  customTrunkBranch: string;
 }
 
 /**
@@ -52,6 +56,7 @@ export function useDraftWorkspaceSettings(
   settings: DraftWorkspaceSettings;
   setRuntimeOptions: (mode: RuntimeMode, host: string) => void;
   setTrunkBranch: (branch: string) => void;
+  setTrunkSelection: (selection: TrunkSelection) => void;
   getRuntimeString: () => string | undefined;
 } {
   // Global AI settings (read-only from global state)
@@ -75,22 +80,50 @@ export function useDraftWorkspaceSettings(
   );
 
   // Project-scoped trunk branch preference (persisted per project)
-  const [trunkBranch, setTrunkBranch] = usePersistedState<string>(
+  const [customTrunkBranch, setCustomTrunkBranch] = usePersistedState<string>(
     getTrunkBranchKey(projectPath),
     "",
+    { listener: true }
+  );
+
+  const [trunkSelection, setTrunkSelection] = usePersistedState<TrunkSelection>(
+    getTrunkSelectionKey(projectPath),
+    TRUNK_SELECTION.DEFAULT,
     { listener: true }
   );
 
   // Parse runtime string into mode and host
   const { mode: runtimeMode, host: sshHost } = parseRuntimeModeAndHost(runtimeString);
 
-  // Initialize trunk branch from backend recommendation or first branch
+  // Initialize custom trunk branch from backend recommendation or first branch
   useEffect(() => {
-    if (!trunkBranch && branches.length > 0) {
-      const defaultBranch = recommendedTrunk ?? branches[0];
-      setTrunkBranch(defaultBranch);
+    if (branches.length === 0) {
+      return;
     }
-  }, [branches, recommendedTrunk, trunkBranch, setTrunkBranch]);
+
+    const recommendedInList = recommendedTrunk && branches.includes(recommendedTrunk);
+    const currentIsValid = customTrunkBranch && branches.includes(customTrunkBranch);
+
+    if (currentIsValid) {
+      return;
+    }
+
+    const fallback = (recommendedInList ? recommendedTrunk : undefined) ?? branches[0];
+    setCustomTrunkBranch(fallback);
+  }, [branches, recommendedTrunk, customTrunkBranch, setCustomTrunkBranch]);
+
+  // Fall back to custom mode when default "main" is unavailable in the repo
+  useEffect(() => {
+    if (
+      branches.length === 0 ||
+      trunkSelection === TRUNK_SELECTION.CUSTOM ||
+      branches.includes(DEFAULT_TRUNK_BRANCH)
+    ) {
+      return;
+    }
+
+    setTrunkSelection(TRUNK_SELECTION.CUSTOM);
+  }, [branches, trunkSelection, setTrunkSelection]);
 
   // Setter for runtime options (updates persisted runtime string)
   const setRuntimeOptions = (newMode: RuntimeMode, newHost: string) => {
@@ -103,6 +136,17 @@ export function useDraftWorkspaceSettings(
     return buildRuntimeString(runtimeMode, sshHost);
   };
 
+  const resolvedCustomBranch =
+    customTrunkBranch ||
+    (recommendedTrunk ?? branches[0]) ||
+    DEFAULT_TRUNK_BRANCH;
+
+  const defaultAvailable = branches.length === 0 || branches.includes(DEFAULT_TRUNK_BRANCH);
+  const effectiveTrunkBranch =
+    trunkSelection === TRUNK_SELECTION.DEFAULT && defaultAvailable
+      ? DEFAULT_TRUNK_BRANCH
+      : resolvedCustomBranch;
+
   return {
     settings: {
       model,
@@ -111,10 +155,13 @@ export function useDraftWorkspaceSettings(
       use1M,
       runtimeMode,
       sshHost,
-      trunkBranch,
+      trunkBranch: effectiveTrunkBranch,
+      trunkSelection,
+      customTrunkBranch: resolvedCustomBranch,
     },
     setRuntimeOptions,
-    setTrunkBranch,
+    setTrunkBranch: setCustomTrunkBranch,
+    setTrunkSelection,
     getRuntimeString,
   };
 }

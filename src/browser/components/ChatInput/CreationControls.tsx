@@ -2,11 +2,14 @@ import React from "react";
 import { RUNTIME_MODE, type RuntimeMode } from "@/common/types/runtime";
 import { TooltipWrapper, Tooltip } from "../Tooltip";
 import { Select } from "../Select";
+import { DEFAULT_TRUNK_BRANCH, TRUNK_SELECTION, type TrunkSelection } from "@/common/constants/workspace";
 
 interface CreationControlsProps {
   branches: string[];
-  trunkBranch: string;
-  onTrunkBranchChange: (branch: string) => void;
+  trunkSelection: TrunkSelection;
+  customTrunkBranch: string;
+  onTrunkSelectionChange: (selection: TrunkSelection) => void;
+  onCustomTrunkBranchChange: (branch: string) => void;
   runtimeMode: RuntimeMode;
   sshHost: string;
   onRuntimeChange: (mode: RuntimeMode, host: string) => void;
@@ -19,24 +22,52 @@ interface CreationControlsProps {
  * - Runtime mode (local vs SSH)
  */
 export function CreationControls(props: CreationControlsProps) {
+  const defaultUnavailable =
+    props.branches.length > 0 && !props.branches.includes(DEFAULT_TRUNK_BRANCH);
+  const showCustomPicker = props.trunkSelection === TRUNK_SELECTION.CUSTOM;
+
+  const handleTrunkSelectionChange = (value: string) => {
+    const selection = value as TrunkSelection;
+    if (selection === TRUNK_SELECTION.DEFAULT && defaultUnavailable) {
+      return;
+    }
+    props.onTrunkSelectionChange(selection);
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {/* Trunk Branch Selector */}
-      {props.branches.length > 0 && (
-        <div className="flex items-center gap-1" data-component="TrunkBranchGroup">
-          <label htmlFor="trunk-branch" className="text-muted text-xs">
-            From:
-          </label>
+      <div className="flex items-center gap-1" data-component="TrunkBranchGroup">
+        <label htmlFor="trunk-branch-mode" className="text-muted text-xs">
+          From:
+        </label>
+        <Select
+          id="trunk-branch-mode"
+          value={props.trunkSelection}
+          options={[
+            { value: TRUNK_SELECTION.DEFAULT, label: "Main" },
+            { value: TRUNK_SELECTION.CUSTOM, label: "Custom" },
+          ]}
+          onChange={handleTrunkSelectionChange}
+          disabled={props.disabled}
+          className="max-w-[110px]"
+          aria-label="Trunk branch selection"
+        />
+        {defaultUnavailable && (
+          <span className="text-muted text-[11px]">Main branch not found</span>
+        )}
+        {showCustomPicker && props.branches.length > 0 && (
           <Select
             id="trunk-branch"
-            value={props.trunkBranch}
+            value={props.customTrunkBranch}
             options={props.branches}
-            onChange={props.onTrunkBranchChange}
+            onChange={props.onCustomTrunkBranchChange}
             disabled={props.disabled}
-            className="max-w-[120px]"
+            className="max-w-[130px]"
+            aria-label="Custom trunk branch"
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Runtime Selector */}
       <div className="flex items-center gap-1" data-component="RuntimeSelectorGroup">

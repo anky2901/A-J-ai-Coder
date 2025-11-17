@@ -109,6 +109,14 @@ export function getTrunkBranchKey(projectPath: string): string {
 }
 
 /**
+ * Get the localStorage key for trunk branch selection mode (default vs custom)
+ * Format: "trunkSelection:{projectPath}"
+ */
+export function getTrunkSelectionKey(projectPath: string): string {
+  return `trunkSelection:${projectPath}`;
+}
+
+/**
  * Get the localStorage key for the 1M context preference (global)
  * Format: "use1MContext"
  */
