@@ -485,7 +485,6 @@ describeIntegration("WORKSPACE_CREATE with both runtimes", () => {
           },
           TEST_TIMEOUT_MS
         );
-
       });
 
       describe("Init hook execution", () => {

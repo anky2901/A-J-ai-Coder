@@ -362,7 +362,9 @@ export class LocalRuntime implements Runtime {
       let baseRef = trunkBranch;
       if (fetchLatest) {
         try {
-          using proc = execAsync(`git -C "${projectPath}" rev-parse --verify "origin/${trunkBranch}"`);
+          using proc = execAsync(
+            `git -C "${projectPath}" rev-parse --verify "origin/${trunkBranch}"`
+          );
           await proc.result;
           baseRef = `origin/${trunkBranch}`;
         } catch {

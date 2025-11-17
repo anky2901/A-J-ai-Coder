@@ -560,9 +560,7 @@ export class SSHRuntime implements Runtime {
     if (fetchLatest) {
       initLogger.logStep("Fetching latest from origin...");
       try {
-        using proc = execAsync(
-          `cd ${shescape.quote(projectPath)} && git fetch origin --prune`
-        );
+        using proc = execAsync(`cd ${shescape.quote(projectPath)} && git fetch origin --prune`);
         await proc.result;
         initLogger.logStep("Origin fetch complete");
 

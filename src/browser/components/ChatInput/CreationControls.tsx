@@ -79,7 +79,7 @@ export function CreationControls(props: CreationControlsProps) {
 
       {/* Fetch latest option */}
       <div className="flex items-center gap-1" data-component="FetchLatestGroup">
-        <label className="flex items-center gap-1 text-xs text-muted" htmlFor="fetch-latest">
+        <label className="text-muted flex items-center gap-1 text-xs" htmlFor="fetch-latest">
           <input
             id="fetch-latest"
             type="checkbox"
