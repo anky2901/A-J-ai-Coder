@@ -10,7 +10,7 @@ import type { SendMessageOptions } from "@/common/types/ipc";
 import type { UIMode } from "@/common/types/mode";
 import type { ThinkingLevel } from "@/common/types/thinking";
 import { enforceThinkingPolicy } from "@/browser/utils/thinking/policy";
-import { getDefaultModelFromLRU } from "@/browser/hooks/useModelLRU";
+import { WORKSPACE_DEFAULTS } from "@/constants/workspaceDefaults";
 
 /**
  * Get send options from localStorage
@@ -20,17 +20,17 @@ import { getDefaultModelFromLRU } from "@/browser/hooks/useModelLRU";
  * This ensures DRY - single source of truth for option extraction.
  */
 export function getSendOptionsFromStorage(workspaceId: string): SendMessageOptions {
-  // Read model preference (workspace-specific), fallback to most recent from LRU
-  const model = readPersistedState<string>(getModelKey(workspaceId), getDefaultModelFromLRU());
+  // Read model preference (workspace-specific), fallback to immutable defaults
+  const model = readPersistedState<string>(getModelKey(workspaceId), WORKSPACE_DEFAULTS.model);
 
   // Read thinking level (workspace-specific)
   const thinkingLevel = readPersistedState<ThinkingLevel>(
     getThinkingLevelKey(workspaceId),
-    "medium"
+    WORKSPACE_DEFAULTS.thinkingLevel
   );
 
   // Read mode (workspace-specific)
-  const mode = readPersistedState<UIMode>(getModeKey(workspaceId), "exec");
+  const mode = readPersistedState<UIMode>(getModeKey(workspaceId), WORKSPACE_DEFAULTS.mode);
 
   // Read 1M context (global)
   const use1M = readPersistedState<boolean>(USE_1M_CONTEXT_KEY, false);

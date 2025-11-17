@@ -69,6 +69,10 @@ function setupMockAPI(options: {
       interruptStream: () => Promise.resolve({ success: true, data: undefined }),
       clearQueue: () => Promise.resolve({ success: true, data: undefined }),
       truncateHistory: () => Promise.resolve({ success: true, data: undefined }),
+      activity: {
+        list: () => Promise.resolve({}),
+        subscribe: () => () => undefined,
+      },
       replaceChatHistory: () => Promise.resolve({ success: true, data: undefined }),
       getInfo: () => Promise.resolve(null),
       executeBash: () =>
@@ -1116,6 +1120,10 @@ export const ActiveWorkspaceWithChat: Story = {
                 }
               },
               onMetadata: () => () => undefined,
+              activity: {
+                list: () => Promise.resolve({}),
+                subscribe: () => () => undefined,
+              },
               sendMessage: () => Promise.resolve({ success: true, data: undefined }),
               resumeStream: () => Promise.resolve({ success: true, data: undefined }),
               interruptStream: () => Promise.resolve({ success: true, data: undefined }),
@@ -1407,6 +1415,10 @@ These tables should render cleanly without any disruptive copy or download actio
                 };
               },
               onMetadata: () => () => undefined,
+              activity: {
+                list: () => Promise.resolve({}),
+                subscribe: () => () => undefined,
+              },
               sendMessage: () => Promise.resolve({ success: true, data: undefined }),
               resumeStream: () => Promise.resolve({ success: true, data: undefined }),
               interruptStream: () => Promise.resolve({ success: true, data: undefined }),
