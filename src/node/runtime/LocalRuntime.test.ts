@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import * as os from "os";
 import * as path from "path";
 import { LocalRuntime } from "./LocalRuntime";
-import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import { execFileSync } from "child_process";
 import type { InitLogger } from "./Runtime";
@@ -87,11 +86,20 @@ function gitOutput(args: string[], cwd?: string): string {
 }
 
 function createTestInitLogger(): InitLogger {
+  const logs: string[] = [];
   return {
-    logStep: () => {},
-    logStdout: () => {},
-    logStderr: () => {},
-    logComplete: () => {},
+    logStep: (m: string) => {
+      logs.push(`[step] ${m}`);
+    },
+    logStdout: (line: string) => {
+      if (line) logs.push(`[out] ${line}`);
+    },
+    logStderr: (line: string) => {
+      if (line) logs.push(`[err] ${line}`);
+    },
+    logComplete: (code: number) => {
+      logs.push(`[done] ${code}`);
+    },
   };
 }
 
@@ -107,17 +115,17 @@ describe("LocalRuntime auto rebase", () => {
     try {
       runGit(["init", "--bare", originDir]);
 
-      fs.mkdirSync(projectDir, { recursive: true });
+      await fsPromises.mkdir(projectDir, { recursive: true });
       runGit(["init", "-b", trunkBranch], projectDir);
       runGit(["remote", "add", "origin", originDir], projectDir);
 
-      fs.writeFileSync(path.join(projectDir, "README.md"), "first\n");
+      await fsPromises.writeFile(path.join(projectDir, "README.md"), "first\n");
       runGit(["add", "README.md"], projectDir);
       runGit(["commit", "-m", "initial"], projectDir);
       runGit(["push", "-u", "origin", trunkBranch], projectDir);
 
       runGit(["clone", "-b", trunkBranch, originDir, upstreamDir]);
-      fs.appendFileSync(path.join(upstreamDir, "README.md"), "second\n");
+      await fsPromises.appendFile(path.join(upstreamDir, "README.md"), "second\n");
       runGit(["commit", "-am", "upstream change"], upstreamDir);
       runGit(["push", "origin", trunkBranch], upstreamDir);
 
