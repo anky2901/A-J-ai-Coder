@@ -12,7 +12,6 @@ import { usePersistedState, updatePersistedState } from "./hooks/usePersistedSta
 import { matchesKeybind, KEYBINDS } from "./utils/ui/keybinds";
 import { useResumeManager } from "./hooks/useResumeManager";
 import { useUnreadTracking } from "./hooks/useUnreadTracking";
-import { useAutoCompactContinue } from "./hooks/useAutoCompactContinue";
 import { useWorkspaceStoreRaw, useWorkspaceRecency } from "./stores/WorkspaceStore";
 import { ChatInput } from "./components/ChatInput/index";
 import type { ChatInputAPI } from "./components/ChatInput/types";
@@ -115,9 +114,6 @@ function AppInner() {
 
   // Auto-resume interrupted streams on app startup and when failures occur
   useResumeManager();
-
-  // Handle auto-continue after compaction (when user uses /compact -c)
-  useAutoCompactContinue();
 
   // Sync selectedWorkspace with URL hash
   useEffect(() => {

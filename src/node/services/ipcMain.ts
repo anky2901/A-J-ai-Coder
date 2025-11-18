@@ -1000,7 +1000,7 @@ export class IpcMain {
       }
     );
 
-    ipcMain.handle(IPC_CHANNELS.WORKSPACE_QUEUE_CLEAR, (_event, workspaceId: string) => {
+    ipcMain.handle(IPC_CHANNELS.WORKSPACE_CLEAR_QUEUE, (_event, workspaceId: string) => {
       try {
         const session = this.getOrCreateSession(workspaceId);
         session.clearQueue();

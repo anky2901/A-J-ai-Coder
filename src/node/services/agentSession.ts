@@ -314,6 +314,15 @@ export class AgentSession {
 
     this.emitChatEvent(userMessage);
 
+    // If this is a compaction request with a continue message, queue it for auto-send after compaction
+    const muxMeta = options?.muxMetadata;
+    if (muxMeta?.type === "compaction-request" && muxMeta.parsed.continueMessage && options) {
+      // Strip out edit-specific and compaction-specific fields so the queued message is a fresh user message
+      const { muxMetadata, mode, editMessageId, ...continueOptions } = options;
+      this.messageQueue.add(muxMeta.parsed.continueMessage, continueOptions);
+      this.emitQueuedMessageChanged();
+    }
+
     if (!options?.model || options.model.trim().length === 0) {
       return Err(
         createUnknownSendMessageError("No model specified. Please select a model using /model.")

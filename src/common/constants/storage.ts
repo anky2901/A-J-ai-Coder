@@ -127,15 +127,6 @@ export const PREFERRED_COMPACTION_MODEL_KEY = "preferredCompactionModel";
 export const VIM_ENABLED_KEY = "vimEnabled";
 
 /**
- * Get the localStorage key for the compact continue message for a workspace
- * Temporarily stores the continuation prompt for the current compaction
- * Should be deleted immediately after use to prevent bugs
- */
-export function getCompactContinueMessageKey(workspaceId: string): string {
-  return `compactContinueMessage:${workspaceId}`;
-}
-
-/**
  * Get the localStorage key for hunk expand/collapse state in Review tab
  * Stores user's manual expand/collapse preferences per hunk
  * Format: "reviewExpandState:{workspaceId}"
@@ -164,7 +155,6 @@ export function getReviewSearchStateKey(workspaceId: string): string {
 
 /**
  * List of workspace-scoped key functions that should be copied on fork and deleted on removal
- * Note: Excludes ephemeral keys like getCompactContinueMessageKey
  */
 const PERSISTENT_WORKSPACE_KEY_FUNCTIONS: Array<(workspaceId: string) => string> = [
   getModelKey,
@@ -183,7 +173,6 @@ const PERSISTENT_WORKSPACE_KEY_FUNCTIONS: Array<(workspaceId: string) => string>
  */
 const EPHEMERAL_WORKSPACE_KEY_FUNCTIONS: Array<(workspaceId: string) => string> = [
   getCancelledCompactionKey,
-  getCompactContinueMessageKey,
 ];
 
 /**

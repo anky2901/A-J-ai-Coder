@@ -672,12 +672,6 @@ export class WorkspaceStore {
     const historicalUsage =
       currentUsage.usageHistory.length > 0 ? sumUsageHistory(currentUsage.usageHistory) : undefined;
 
-    // Extract continueMessage from compaction-request before history gets replaced
-    const compactRequestMsg = findCompactionRequestMessage(aggregator);
-    const muxMeta = compactRequestMsg?.metadata?.muxMetadata;
-    const continueMessage =
-      muxMeta?.type === "compaction-request" ? muxMeta.parsed.continueMessage : undefined;
-
     const summaryMessage = createMuxMessage(
       `summary-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       "assistant",
@@ -697,10 +691,7 @@ export class WorkspaceStore {
           metadata && "systemMessageTokens" in metadata
             ? (metadata.systemMessageTokens as number | undefined)
             : undefined,
-        // Store continueMessage in summary so it survives history replacement
-        muxMetadata: continueMessage
-          ? { type: "compaction-result", continueMessage, requestId: compactRequestMsg?.id }
-          : { type: "normal" },
+        muxMetadata: { type: "normal" },
       }
     );
 

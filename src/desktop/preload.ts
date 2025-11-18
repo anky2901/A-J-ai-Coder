@@ -75,7 +75,7 @@ const api: IPCApi = {
     interruptStream: (workspaceId: string, options?: { abandonPartial?: boolean }) =>
       ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_INTERRUPT_STREAM, workspaceId, options),
     clearQueue: (workspaceId: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_QUEUE_CLEAR, workspaceId),
+      ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_CLEAR_QUEUE, workspaceId),
     truncateHistory: (workspaceId, percentage) =>
       ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_TRUNCATE_HISTORY, workspaceId, percentage),
     replaceChatHistory: (workspaceId, summaryMessage) =>

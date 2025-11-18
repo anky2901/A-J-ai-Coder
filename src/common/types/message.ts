@@ -21,11 +21,6 @@ export type MuxFrontendMetadata =
       parsed: CompactionRequestData;
     }
   | {
-      type: "compaction-result";
-      continueMessage: string; // Message to send after compaction completes
-      requestId?: string; // ID of the compaction-request user message that produced this summary (for idempotency)
-    }
-  | {
       type: "normal"; // Regular messages
     };
 
