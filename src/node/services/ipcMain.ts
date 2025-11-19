@@ -1753,16 +1753,17 @@ export class IpcMain {
       // macOS - try Ghostty first, fallback to Terminal.app
       const terminal = await this.findAvailableCommand(["ghostty", "terminal"]);
       if (terminal === "ghostty") {
-        const cmd = "open";
+        let cmd: string;
         let args: string[];
         if (isSSH && sshArgs) {
-          // Ghostty: Use --command flag to run SSH
-          // Build the full SSH command as a single string
-          const sshCommand = ["ssh", ...sshArgs].join(" ");
-          args = ["-n", "-a", "Ghostty", "--args", `--command=${sshCommand}`];
+          // Ghostty: Call ghostty directly with SSH command
+          // This ensures the terminal stays open for the interactive SSH session
+          cmd = "ghostty";
+          args = ["ssh", ...sshArgs];
         } else {
-          // Ghostty: Use -n to open new window, pass working directory via --args
+          // Ghostty: Use open with working directory for local terminals
           if (config.type !== "local") throw new Error("Expected local config");
+          cmd = "open";
           args = ["-n", "-a", "Ghostty", "--args", `--working-directory=${config.workspacePath}`];
         }
         log.info(`Opening ${logPrefix}: ${cmd} ${args.join(" ")}`);
