@@ -31,7 +31,8 @@ import type { RuntimeConfig } from "@/common/types/runtime";
 import { isSSHRuntime } from "@/common/types/runtime";
 import { validateProjectPath } from "@/node/utils/pathUtils";
 import { PTYService } from "@/node/services/ptyService";
-
+import { expandTildeForSSH } from "@/node/runtime/tildeExpansion";
+import { getControlPath } from "@/node/runtime/sshConnectionPool";
 import type { TerminalCreateParams, TerminalResizeParams } from "@/common/types/terminal";
 import { ExtensionMetadataService } from "@/node/services/ExtensionMetadataService";
 import { generateWorkspaceName } from "./workspaceTitleGenerator";
@@ -1723,7 +1724,19 @@ export class IpcMain {
       // Add identity file if specified
       if (config.sshConfig.identityFile) {
         sshArgs.push("-i", config.sshConfig.identityFile);
+        sshArgs.push("-o", "StrictHostKeyChecking=no");
+        sshArgs.push("-o", "UserKnownHostsFile=/dev/null");
+        sshArgs.push("-o", "LogLevel=ERROR");
       }
+      // Add connection multiplexing (reuse SSHRuntime's controlPath logic)
+      const controlPath = getControlPath(config.sshConfig);
+      sshArgs.push("-o", "ControlMaster=auto");
+      sshArgs.push("-o", `ControlPath=${controlPath}`);
+      sshArgs.push("-o", "ControlPersist=60");
+      // Add connection timeout
+      sshArgs.push("-o", "ConnectTimeout=15");
+      sshArgs.push("-o", "ServerAliveInterval=5");
+      sshArgs.push("-o", "ServerAliveCountMax=2");
       // Force pseudo-terminal allocation
       sshArgs.push("-t");
       // Add host
