@@ -389,7 +389,10 @@ export class AIService extends EventEmitter {
               })();
 
               const method = (init?.method ?? "GET").toUpperCase();
-              const isOpenAIResponses = /\/v1\/responses(\?|$)/.test(urlString);
+              // Match /responses anywhere in path (supports both direct and gateway URLs)
+              // Direct: /v1/responses
+              // Gateway: /v1/{account}/{gateway}/openai/responses
+              const isOpenAIResponses = /\/responses(\?|$)/.test(urlString);
 
               const body = init?.body;
               if (
