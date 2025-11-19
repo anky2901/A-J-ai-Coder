@@ -112,7 +112,7 @@ describe("createCompactionRequest", () => {
     expect(result.sendOptions.model).toBe(KNOWN_MODELS.SONNET.id);
     expect(result.sendOptions.muxMetadata).toBeDefined();
     expect(result.metadata.type).toBe("compaction-request");
-    
+
     if (result.metadata.type === "compaction-request") {
       expect(result.metadata.parsed).toBeDefined();
     }
@@ -126,16 +126,14 @@ describe("createCompactionRequest", () => {
     });
 
     expect(result.messageText).toContain("Fix the bug");
-    
+
     if (result.metadata.type === "compaction-request") {
       expect(result.metadata.parsed.continueMessage).toEqual({ text: "Fix the bug" });
     }
   });
 
   it("includes images in continue message metadata", () => {
-    const imageParts = [
-      { url: "data:image/png;base64,base64data", mediaType: "image/png" },
-    ];
+    const imageParts = [{ url: "data:image/png;base64,base64data", mediaType: "image/png" }];
 
     const result = createCompactionRequest({
       baseOptions,
@@ -158,7 +156,7 @@ describe("createCompactionRequest", () => {
     });
 
     expect(result.sendOptions.maxOutputTokens).toBe(8000);
-    
+
     if (result.metadata.type === "compaction-request") {
       expect(result.metadata.parsed.maxOutputTokens).toBe(8000);
     }
@@ -175,7 +173,7 @@ describe("createCompactionRequest", () => {
     });
 
     expect(result.sendOptions.model).toBe(KNOWN_MODELS.HAIKU.id);
-    
+
     if (result.metadata.type === "compaction-request") {
       expect(result.metadata.parsed.model).toBe(KNOWN_MODELS.HAIKU.id);
     }

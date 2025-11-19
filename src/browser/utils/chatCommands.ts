@@ -7,7 +7,6 @@
  */
 
 import type { SendMessageOptions, ImagePart } from "@/common/types/ipc";
-import type { MuxFrontendMetadata } from "@/common/types/message";
 import type { FrontendWorkspaceMetadata } from "@/common/types/workspace";
 import type { RuntimeConfig } from "@/common/types/runtime";
 import { RUNTIME_MODE, SSH_RUNTIME_PREFIX } from "@/common/types/runtime";
@@ -17,7 +16,7 @@ import type { ParsedCommand } from "@/browser/utils/slashCommands/types";
 import { resolveCompactionModel } from "@/browser/utils/messages/compactionModelPreference";
 import { getRuntimeKey } from "@/common/constants/storage";
 import { createCompactionRequest } from "@/common/utils/compaction";
-import { ImageAttachment } from "../components/ImageAttachments";
+import type { ImageAttachment } from "../components/ImageAttachments";
 
 // ============================================================================
 // Workspace Creation
@@ -199,7 +198,11 @@ export async function executeCompaction(options: CompactionOptions): Promise<Com
 
   // Use shared factory to create compaction request with proper overrides
   const { messageText, sendOptions } = createCompactionRequest({
-    baseOptions: { ...options.sendMessageOptions, model: effectiveModel },
+    baseOptions: {
+      ...options.sendMessageOptions,
+      model: effectiveModel,
+      maxOutputTokens: options.maxOutputTokens,
+    },
     continueMessage: options.continueMessage
       ? { text: options.continueMessage, imageParts: options.imageParts }
       : undefined,

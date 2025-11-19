@@ -1,12 +1,12 @@
 /**
  * Shared compaction utilities for both frontend and backend
- * 
+ *
  * Provides factory functions to create compaction requests with proper option overrides,
  * ensuring manual /compact commands and auto-compaction behave identically.
  */
 
 import type { SendMessageOptions, ImagePart } from "@/common/types/ipc";
-import type { MuxFrontendMetadata, CompactionRequestData, ContinueMessage } from "@/common/types/message";
+import type { MuxFrontendMetadata, CompactionRequestData } from "@/common/types/message";
 
 // ============================================================================
 // Option overrides
@@ -46,32 +46,32 @@ export function applyCompactionOverrides(
 // ============================================================================
 
 export interface CreateCompactionRequestOptions {
-  baseOptions: SendMessageOptions;  // User's workspace defaults
+  baseOptions: SendMessageOptions; // User's workspace defaults
   continueMessage?: { text: string; imageParts?: ImagePart[] };
   rawCommand: string;
 }
 
 export interface CreateCompactionRequestResult {
   messageText: string;
-  metadata: MuxFrontendMetadata;  // For display/regeneration
-  sendOptions: SendMessageOptions;  // Ready to send (has muxMetadata attached)
+  metadata: MuxFrontendMetadata; // For display/regeneration
+  sendOptions: SendMessageOptions; // Ready to send (has muxMetadata attached)
 }
 
 /**
  * Create a complete compaction request with proper option overrides
- * 
+ *
  * Single source of truth for compaction request creation, used by:
  * - Frontend executeCompaction: uses sendOptions directly
  * - Frontend ChatInput: uses metadata separately for regeneration
  * - Backend auto-compaction: uses sendOptions directly
- * 
+ *
  * Ensures all paths apply identical overrides (tools disabled, mode: "compact", etc.)
  */
 export function createCompactionRequest(
   options: CreateCompactionRequestOptions
 ): CreateCompactionRequestResult {
-  const targetWords = options.baseOptions.maxOutputTokens 
-    ? Math.round(options.baseOptions.maxOutputTokens / 1.3) 
+  const targetWords = options.baseOptions.maxOutputTokens
+    ? Math.round(options.baseOptions.maxOutputTokens / 1.3)
     : 2000;
 
   // Build compaction message with optional continue context
