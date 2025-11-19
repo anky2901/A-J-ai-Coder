@@ -7,7 +7,7 @@
  */
 
 import type { SendMessageOptions } from "@/common/types/ipc";
-import type { MuxFrontendMetadata, CompactionRequestData } from "@/common/types/message";
+import type { MuxFrontendMetadata } from "@/common/types/message";
 import type { FrontendWorkspaceMetadata } from "@/common/types/workspace";
 import type { RuntimeConfig } from "@/common/types/runtime";
 import { RUNTIME_MODE, SSH_RUNTIME_PREFIX } from "@/common/types/runtime";
@@ -17,6 +17,7 @@ import type { ParsedCommand } from "@/browser/utils/slashCommands/types";
 import { applyCompactionOverrides } from "@/browser/utils/messages/compactionOptions";
 import { resolveCompactionModel } from "@/browser/utils/messages/compactionModelPreference";
 import { getRuntimeKey } from "@/common/constants/storage";
+import { prepareCompactionMessage as prepareCompactionMessageCommon } from "@/common/utils/compaction";
 
 // ============================================================================
 // Workspace Creation
@@ -197,33 +198,26 @@ export function prepareCompactionMessage(options: CompactionOptions): {
   metadata: MuxFrontendMetadata;
   sendOptions: SendMessageOptions;
 } {
-  const targetWords = options.maxOutputTokens ? Math.round(options.maxOutputTokens / 1.3) : 2000;
-
-  // Build compaction message with optional continue context
-  let messageText = `Summarize this conversation into a compact form for a new Assistant to continue helping the user. Use approximately ${targetWords} words.`;
-
-  if (options.continueMessage) {
-    messageText += `\n\nThe user wants to continue with: ${options.continueMessage}`;
-  }
-
   // Handle model preference (sticky globally)
   const effectiveModel = resolveCompactionModel(options.model);
 
-  // Create compaction metadata (will be stored in user message)
-  const compactData: CompactionRequestData = {
-    model: effectiveModel,
+  // Use common compaction message preparation
+  const { messageText, metadata } = prepareCompactionMessageCommon({
     maxOutputTokens: options.maxOutputTokens,
+    model: effectiveModel,
     continueMessage: options.continueMessage,
-  };
-
-  const metadata: MuxFrontendMetadata = {
-    type: "compaction-request",
     rawCommand: formatCompactionCommand(options),
-    parsed: compactData,
-  };
+  });
 
-  // Apply compaction overrides
-  const sendOptions = applyCompactionOverrides(options.sendMessageOptions, compactData);
+  // Apply compaction overrides (metadata is always compaction-request type here)
+  const compactionMetadata = metadata as Extract<
+    MuxFrontendMetadata,
+    { type: "compaction-request" }
+  >;
+  const sendOptions = applyCompactionOverrides(
+    options.sendMessageOptions,
+    compactionMetadata.parsed
+  );
 
   return { messageText, metadata, sendOptions };
 }

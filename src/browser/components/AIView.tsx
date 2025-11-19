@@ -4,6 +4,7 @@ import { MessageRenderer } from "./Messages/MessageRenderer";
 import { InterruptedBarrier } from "./Messages/ChatBarrier/InterruptedBarrier";
 import { StreamingBarrier } from "./Messages/ChatBarrier/StreamingBarrier";
 import { RetryBarrier } from "./Messages/ChatBarrier/RetryBarrier";
+import { CompactionWarning } from "./Messages/CompactionWarning";
 import { PinnedTodoList } from "./PinnedTodoList";
 import { getAutoRetryKey, VIM_ENABLED_KEY } from "@/common/constants/storage";
 import { ChatInput, type ChatInputAPI } from "./ChatInput/index";
@@ -447,6 +448,8 @@ const AIViewInner: React.FC<AIViewProps> = ({
                   })}
                   {/* Show RetryBarrier after the last message if needed */}
                   {showRetryBarrier && <RetryBarrier workspaceId={workspaceId} />}
+                  {/* Show CompactionWarning if next message will trigger auto-compaction */}
+                  {workspaceState.willCompactNext && !isCompacting && <CompactionWarning />}
                 </>
               )}
               <PinnedTodoList workspaceId={workspaceId} />

@@ -42,6 +42,7 @@ export interface StreamEndEvent {
     systemMessageTokens?: number;
     historySequence?: number; // Present when loading from history
     timestamp?: number; // Present when loading from history
+    willCompactOnNextMessage?: boolean; // True if next user message will trigger auto-compaction
   };
   // Parts array preserves temporal ordering of reasoning, text, and tool calls
   parts: CompletedMessagePart[];
@@ -52,10 +53,12 @@ export interface StreamAbortEvent {
   workspaceId: string;
   messageId: string;
   // Metadata may contain usage if abort occurred after stream completed processing
-  metadata?: {
+  metadata: {
     usage?: LanguageModelV2Usage;
     duration?: number;
+    willCompactOnNextMessage?: boolean;
   };
+  willCompactOnNextMessage?: boolean;
   abandonPartial?: boolean;
 }
 

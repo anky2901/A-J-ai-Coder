@@ -7,7 +7,13 @@ import { Ok, Err } from "@/common/types/result";
 import type { LanguageModelV2Usage } from "@ai-sdk/provider";
 import { cumUsageHistory } from "@/common/utils/tokens/displayUsage";
 import { sumUsageHistory } from "@/common/utils/tokens/usageAggregator";
-import { createMuxMessage, MuxMessage } from "@/common/types/message";
+<<<<<<< Updated upstream
+import { createMuxMessage, type MuxMessage } from "@/common/types/message";
+=======
+import { createMuxMessage } from "@/common/types/message";
+>>>>>>> Stashed changes
+import { getModelStats } from "@/common/utils/tokens/modelStats";
+import { getTokenizerForModel } from "@/node/utils/main/tokenizer";
 
 interface CompactionHandlerOptions {
   workspaceId: string;
@@ -23,12 +29,14 @@ interface CompactionHandlerOptions {
  * - Handling Ctrl+C (cancel) and Ctrl+A (accept early) flows
  * - Replacing chat history with compacted summaries
  * - Preserving cumulative usage across compactions
+ * - Auto-compaction detection when approaching context limits
  */
 export class CompactionHandler {
   private readonly workspaceId: string;
   private readonly historyService: HistoryService;
   private readonly emitter: EventEmitter;
   private readonly processedCompactionRequestIds: Set<string> = new Set<string>();
+  private willCompactNext = false;
 
   constructor(options: CompactionHandlerOptions) {
     this.workspaceId = options.workspaceId;
@@ -130,7 +138,7 @@ export class CompactionHandler {
     // Mark as processed before performing compaction
     this.processedCompactionRequestIds.add(lastUserMsg.id);
 
-    const result = await this.performCompaction(summary, messages,event.metadata);
+    const result = await this.performCompaction(summary, messages, event.metadata);
     if (!result.success) {
       console.error("[CompactionHandler] Compaction failed:", result.error);
       return false;
@@ -213,6 +221,88 @@ export class CompactionHandler {
     this.emitChatEvent(summaryMessage);
 
     return Ok(undefined);
+  }
+
+  /**
+   * Check if history is approaching context limit and should trigger auto-compaction
+   * Returns true if tokens >= 70% of model's max_input_tokens
+   */
+  private async shouldTriggerAutoCompaction(): Promise<boolean> {
+    const historyResult = await this.historyService.getHistory(this.workspaceId);
+    if (!historyResult.success) {
+      return false;
+    }
+
+    const messages = historyResult.data;
+    if (messages.length === 0) {
+      return false;
+    }
+
+    // Get model from last assistant message
+    const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant");
+    const model = lastAssistantMsg?.metadata?.model;
+    if (!model) {
+      return false;
+    }
+
+    // Get model stats for max_input_tokens
+    const modelStats = getModelStats(model);
+    const maxInputTokens = modelStats?.max_input_tokens;
+    if (!maxInputTokens) {
+      // If we don't have token limits for this model, don't trigger auto-compaction
+      return false;
+    }
+
+    // Count tokens in entire history
+    const tokenizer = await getTokenizerForModel(model);
+    let totalTokens = 0;
+
+    for (const message of messages) {
+      // Count text content
+      const textContent = message.parts
+        .filter((part): part is { type: "text"; text: string } => part.type === "text")
+        .map((part) => part.text)
+        .join("");
+
+      if (textContent) {
+        totalTokens += await tokenizer.countTokens(textContent);
+      }
+
+      // Note: We're not counting image tokens here as they're more complex
+      // This is a conservative estimate - if we're at 70% of text tokens,
+      // we're likely closer to the limit when images are included
+    }
+
+    // Trigger if we're at or above 70% of the limit
+    const threshold = maxInputTokens * 0.7;
+    return totalTokens >= threshold;
+  }
+
+  /**
+   * Check if auto-compaction should trigger and update the flag
+   * Returns true if the flag was set (indicating frontend should show warning)
+   */
+  async checkAndUpdateAutoCompactionFlag(): Promise<boolean> {
+    const shouldCompact = await this.shouldTriggerAutoCompaction();
+    if (shouldCompact) {
+      this.willCompactNext = true;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get the auto-compaction flag state
+   */
+  getWillCompactNext(): boolean {
+    return this.willCompactNext;
+  }
+
+  /**
+   * Clear the auto-compaction flag
+   */
+  clearWillCompactNext(): void {
+    this.willCompactNext = false;
   }
 
   /**

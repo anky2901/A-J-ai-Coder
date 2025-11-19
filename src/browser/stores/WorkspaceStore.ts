@@ -37,6 +37,7 @@ export interface WorkspaceState {
   todos: TodoItem[];
   agentStatus: { emoji: string; message: string; url?: string } | undefined;
   pendingStreamStartTime: number | null;
+  willCompactNext: boolean;
 }
 
 /**
@@ -334,6 +335,7 @@ export class WorkspaceStore {
         todos: aggregator.getCurrentTodos(),
         agentStatus: aggregator.getAgentStatus(),
         pendingStreamStartTime: aggregator.getPendingStreamStartTime(),
+        willCompactNext: aggregator.willCompactOnNextMessage(),
       };
     });
   }

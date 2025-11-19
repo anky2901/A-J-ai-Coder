@@ -865,8 +865,6 @@ export class StreamManager extends EventEmitter {
           parts: streamInfo.parts, // Parts array with temporal ordering (includes reasoning)
         };
 
-        this.emit("stream-end", streamEndEvent);
-
         // Update history with final message (only if there are parts)
         if (streamInfo.parts && streamInfo.parts.length > 0) {
           const finalAssistantMessage: MuxMessage = {
@@ -886,6 +884,8 @@ export class StreamManager extends EventEmitter {
           // Update the placeholder message in chat.jsonl with final content
           await this.historyService.updateHistory(workspaceId as string, finalAssistantMessage);
         }
+
+        this.emit("stream-end", streamEndEvent);
       }
     } catch (error) {
       streamInfo.state = StreamState.ERROR;

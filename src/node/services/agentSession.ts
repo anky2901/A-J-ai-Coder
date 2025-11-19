@@ -25,6 +25,7 @@ import { createRuntime } from "@/node/runtime/runtimeFactory";
 import { MessageQueue } from "./messageQueue";
 import type { StreamEndEvent, StreamAbortEvent } from "@/common/types/stream";
 import { CompactionHandler } from "./compactionHandler";
+import { prepareCompactionMessage } from "@/common/utils/compaction";
 
 export interface AgentSessionChatEvent {
   workspaceId: string;
@@ -270,6 +271,43 @@ export class AgentSession {
       );
     }
 
+    // Auto-compaction: intercept if flag is set
+    if (
+      this.compactionHandler.getWillCompactNext() &&
+      options?.muxMetadata?.type !== "compaction-request"
+    ) {
+      this.compactionHandler.clearWillCompactNext();
+
+      if (!options?.model) {
+        return Err(createUnknownSendMessageError("No model specified for auto-compaction."));
+      }
+
+      // Prepare compaction with continueMessage
+      const { messageText, metadata } = prepareCompactionMessage({
+        model: options.model,
+        rawCommand: "/compact",
+        continueMessage: trimmedMessage,
+      });
+
+      const compactionOptions = {
+        model: options.model,
+        thinkingLevel: options.thinkingLevel,
+        toolPolicy: options.toolPolicy,
+        additionalSystemInstructions: options.additionalSystemInstructions,
+        mode: options.mode,
+        muxMetadata: metadata,
+      };
+
+      return this.sendMessage(messageText, compactionOptions);
+    }
+
+    if (
+      this.compactionHandler.getWillCompactNext() &&
+      options?.muxMetadata?.type === "compaction-request"
+    ) {
+      this.compactionHandler.clearWillCompactNext();
+    }
+
     if (options?.editMessageId) {
       const truncateResult = await this.historyService.truncateAfterMessage(
         this.workspaceId,
@@ -438,18 +476,32 @@ export class AgentSession {
     forward("reasoning-end", (payload) => this.emitChatEvent(payload));
 
     forward("stream-end", async (payload) => {
-      const handled = await this.compactionHandler.handleCompletion(payload as StreamEndEvent);
+      const event = payload as StreamEndEvent;
+      const handled = await this.compactionHandler.handleCompletion(event);
       if (!handled) {
-        this.emitChatEvent(payload);
+        const shouldCompact = await this.compactionHandler.checkAndUpdateAutoCompactionFlag();
+        if (shouldCompact) {
+          event.metadata.willCompactOnNextMessage = true;
+        }
+        this.emitChatEvent(event);
       }
       // Stream end: auto-send queued messages
       this.sendQueuedMessages();
     });
 
     forward("stream-abort", async (payload) => {
-      const handled = await this.compactionHandler.handleAbort(payload as StreamAbortEvent);
+      const event = payload as StreamAbortEvent;
+      const handled = await this.compactionHandler.handleAbort(event);
       if (!handled) {
-        this.emitChatEvent(payload);
+        const shouldCompact = await this.compactionHandler.checkAndUpdateAutoCompactionFlag();
+        if (shouldCompact) {
+<<<<<<< Updated upstream
+          event.willCompactOnNextMessage = true;
+=======
+          event.metadata.willCompactOnNextMessage = true;
+>>>>>>> Stashed changes
+        }
+        this.emitChatEvent(event);
       }
 
       // Stream aborted: restore queued messages to input

@@ -104,6 +104,9 @@ export class StreamingMessageAggregator {
   // REQUIRED: Backend guarantees every workspace has createdAt via config.ts
   private readonly createdAt: string;
 
+  // Flag indicating if next user message will trigger auto-compaction
+  private willCompactNext = false;
+
   constructor(createdAt: string) {
     this.createdAt = createdAt;
     this.updateRecency();
@@ -294,6 +297,10 @@ export class StreamingMessageAggregator {
     return false;
   }
 
+  willCompactOnNextMessage(): boolean {
+    return this.willCompactNext && !this.isCompacting();
+  }
+
   getCurrentModel(): string | undefined {
     // If there's an active stream, return its model
     for (const context of this.activeStreams.values()) {
@@ -455,6 +462,10 @@ export class StreamingMessageAggregator {
       // Clean up stream-scoped state (active stream tracking, TODOs)
       this.cleanupStreamState(data.messageId);
     }
+
+    // Update willCompactNext flag from metadata
+    this.willCompactNext = data.metadata.willCompactOnNextMessage ?? false;
+
     this.invalidateCache();
   }
 
