@@ -31,7 +31,7 @@ import type { RuntimeConfig } from "@/common/types/runtime";
 import { isSSHRuntime } from "@/common/types/runtime";
 import { validateProjectPath } from "@/node/utils/pathUtils";
 import { PTYService } from "@/node/services/ptyService";
-import type { TerminalWindowManager } from "@/desktop/terminalWindowManager";
+
 import type { TerminalCreateParams, TerminalResizeParams } from "@/common/types/terminal";
 import { ExtensionMetadataService } from "@/node/services/ExtensionMetadataService";
 import { generateWorkspaceName } from "./workspaceTitleGenerator";
@@ -56,7 +56,7 @@ export class IpcMain {
   private readonly initStateManager: InitStateManager;
   private readonly extensionMetadata: ExtensionMetadataService;
   private readonly ptyService: PTYService;
-  private terminalWindowManager?: TerminalWindowManager;
+  private readonly mode: "desktop" | "browser";
   private readonly sessions = new Map<string, AgentSession>();
   private readonly sessionSubscriptions = new Map<
     string,
@@ -66,8 +66,9 @@ export class IpcMain {
 
   private registered = false;
 
-  constructor(config: Config) {
+  constructor(config: Config, mode: "desktop" | "browser" = "browser") {
     this.config = config;
+    this.mode = mode;
     this.historyService = new HistoryService(config);
     this.partialService = new PartialService(config, this.historyService);
     this.initStateManager = new InitStateManager(config);
@@ -95,13 +96,7 @@ export class IpcMain {
     await this.extensionMetadata.initialize();
   }
 
-  /**
-   * Set the terminal window manager (desktop mode only).
-   * Server mode doesn't use pop-out terminal windows.
-   */
-  setTerminalWindowManager(manager: TerminalWindowManager): void {
-    this.terminalWindowManager = manager;
-  }
+
 
   /**
    * Setup listeners to update metadata store based on AIService events.
@@ -1599,47 +1594,37 @@ export class IpcMain {
         }
 
         const runtimeConfig = workspace.runtimeConfig;
-        const isSSH = isSSHRuntime(runtimeConfig);
-        const isDesktop = !!this.terminalWindowManager;
+        const isDesktop = this.mode === "desktop";
 
-        // Terminal routing logic:
-        // - Desktop + Local: Native terminal
-        // - Desktop + SSH: Web terminal (ghostty-web Electron window)
-        // - Browser + Local: Web terminal (browser tab)
-        // - Browser + SSH: Web terminal (browser tab)
-        if (isDesktop && !isSSH) {
-          // Desktop + Local: Native terminal
-          log.info(`Opening native terminal for local workspace: ${workspaceId}`);
-          await this.openTerminal({ type: "local", workspacePath: workspace.namedWorkspacePath });
-        } else if (isDesktop && isSSH) {
-          // Desktop + SSH: Web terminal (ghostty-web Electron window)
-          log.info(`Opening ghostty-web terminal for SSH workspace: ${workspaceId}`);
-          await this.terminalWindowManager!.openTerminalWindow(workspaceId);
+        if (isDesktop) {
+          // Desktop mode: Always use native terminal (both local and SSH)
+          if (isSSHRuntime(runtimeConfig)) {
+            log.info(`Opening native SSH terminal for workspace: ${workspaceId}`);
+            await this.openTerminal({
+              type: "ssh",
+              sshConfig: runtimeConfig,
+              remotePath: workspace.namedWorkspacePath,
+            });
+          } else {
+            log.info(`Opening native terminal for local workspace: ${workspaceId}`);
+            await this.openTerminal({ type: "local", workspacePath: workspace.namedWorkspacePath });
+          }
         } else {
-          // Browser mode (local or SSH): Web terminal (browser window)
-          // Browser will handle opening the terminal window via window.open()
+          // Browser mode: Web terminal handled by browser (window.open)
           log.info(
-            `Browser mode: terminal UI handled by browser for ${isSSH ? "SSH" : "local"} workspace: ${workspaceId}`
+            `Browser mode: terminal UI handled by browser for ${isSSHRuntime(runtimeConfig) ? "SSH" : "local"} workspace: ${workspaceId}`
           );
         }
-
-        log.info(`Terminal opened successfully for workspace: ${workspaceId}`);
       } catch (err) {
         log.error("Error opening terminal window:", err);
         throw err;
       }
     });
 
-    ipcMain.handle(IPC_CHANNELS.TERMINAL_WINDOW_CLOSE, (_event, workspaceId: string) => {
-      try {
-        if (!this.terminalWindowManager) {
-          throw new Error("Terminal window manager not available (desktop mode only)");
-        }
-        this.terminalWindowManager.closeTerminalWindow(workspaceId);
-      } catch (err) {
-        log.error("Error closing terminal window:", err);
-        throw err;
-      }
+    ipcMain.handle(IPC_CHANNELS.TERMINAL_WINDOW_CLOSE, () => {
+      // No-op: Desktop mode uses native terminals (user closes them directly)
+      // Browser mode handles closing via browser (user closes tab/window)
+      return Promise.resolve();
     });
   }
 
