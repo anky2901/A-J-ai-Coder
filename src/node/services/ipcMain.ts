@@ -1750,8 +1750,8 @@ export class IpcMain {
     const logPrefix = isSSH ? "SSH terminal" : "terminal";
 
     if (process.platform === "darwin") {
-      // macOS - try Ghostty first, fallback to Terminal.app
-      const terminal = await this.findAvailableCommand(["ghostty", "terminal"]);
+      // macOS - try Ghostty for local, always use Terminal.app for SSH (proven to work)
+      const terminal = isSSH ? "terminal" : await this.findAvailableCommand(["ghostty", "terminal"]);
       if (terminal === "ghostty") {
         let cmd: string;
         let args: string[];
