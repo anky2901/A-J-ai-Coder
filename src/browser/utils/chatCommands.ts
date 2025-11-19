@@ -6,7 +6,7 @@
  * to ensure consistent behavior and avoid duplication.
  */
 
-import type { SendMessageOptions } from "@/common/types/ipc";
+import type { SendMessageOptions, ImagePart } from "@/common/types/ipc";
 import type { MuxFrontendMetadata } from "@/common/types/message";
 import type { FrontendWorkspaceMetadata } from "@/common/types/workspace";
 import type { RuntimeConfig } from "@/common/types/runtime";
@@ -18,6 +18,7 @@ import { applyCompactionOverrides } from "@/browser/utils/messages/compactionOpt
 import { resolveCompactionModel } from "@/browser/utils/messages/compactionModelPreference";
 import { getRuntimeKey } from "@/common/constants/storage";
 import { prepareCompactionMessage as prepareCompactionMessageCommon } from "@/common/utils/compaction";
+import { ImageAttachment } from "../components/ImageAttachments";
 
 // ============================================================================
 // Workspace Creation
@@ -178,7 +179,8 @@ export { forkWorkspace } from "./workspaceFork";
 export interface CompactionOptions {
   workspaceId: string;
   maxOutputTokens?: number;
-  continueMessage?: string;
+  continueMessage?: string; // Frontend receives string from slash command parser
+  imageParts?: ImagePart[]; // Images attached to the continue message
   model?: string;
   sendMessageOptions: SendMessageOptions;
   editMessageId?: string;
@@ -205,7 +207,9 @@ export function prepareCompactionMessage(options: CompactionOptions): {
   const { messageText, metadata } = prepareCompactionMessageCommon({
     maxOutputTokens: options.maxOutputTokens,
     model: effectiveModel,
-    continueMessage: options.continueMessage,
+    continueMessage: options.continueMessage
+      ? { text: options.continueMessage, imageParts: options.imageParts }
+      : undefined,
     rawCommand: formatCompactionCommand(options),
   });
 
@@ -273,8 +277,10 @@ function formatCompactionCommand(options: CompactionOptions): string {
 export interface CommandHandlerContext {
   workspaceId: string;
   sendMessageOptions: SendMessageOptions;
+  imageParts?: ImagePart[]; // Images attached when command was invoked
   editMessageId?: string;
   setInput: (value: string) => void;
+  setImageAttachments: (images: ImageAttachment[]) => void;
   setIsSending: (value: boolean) => void;
   setToast: (toast: Toast) => void;
   onCancelEdit?: () => void;
@@ -388,12 +394,14 @@ export async function handleCompactCommand(
     sendMessageOptions,
     editMessageId,
     setInput,
+    setImageAttachments,
     setIsSending,
     setToast,
     onCancelEdit,
   } = context;
 
   setInput("");
+  setImageAttachments([]);
   setIsSending(true);
 
   try {
@@ -401,6 +409,7 @@ export async function handleCompactCommand(
       workspaceId,
       maxOutputTokens: parsed.maxOutputTokens,
       continueMessage: parsed.continueMessage,
+      imageParts: context.imageParts,
       model: parsed.model,
       sendMessageOptions,
       editMessageId,

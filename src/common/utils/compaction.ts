@@ -2,13 +2,13 @@
  * Shared compaction utilities for both frontend and backend
  */
 
-import type { MuxFrontendMetadata, CompactionRequestData } from "@/common/types/message";
+import type { MuxFrontendMetadata, CompactionRequestData, ContinueMessage } from "@/common/types/message";
 
 export interface PrepareCompactionMessageOptions {
   maxOutputTokens?: number;
   model?: string;
   rawCommand: string;
-  continueMessage?: string;
+  continueMessage?: ContinueMessage;
 }
 
 export interface PrepareCompactionMessageResult {
@@ -29,7 +29,7 @@ export function prepareCompactionMessage(
   let messageText = `Summarize this conversation into a compact form for a new Assistant to continue helping the user. Use approximately ${targetWords} words.`;
 
   if (options.continueMessage) {
-    messageText += `\n\nThe user wants to continue with: ${options.continueMessage}`;
+    messageText += `\n\nThe user wants to continue with: ${options.continueMessage.text}`;
   }
 
   // Create compaction metadata

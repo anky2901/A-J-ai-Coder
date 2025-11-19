@@ -285,8 +285,9 @@ export class AgentSession {
       // Prepare compaction with continueMessage
       const { messageText, metadata } = prepareCompactionMessage({
         model: options.model,
-        rawCommand: "/compact",
-        continueMessage: trimmedMessage,
+        // To match a manual compaction with a continue message
+        rawCommand: `/compact\n${trimmedMessage}`,
+        continueMessage: { text: trimmedMessage, imageParts }
       });
 
       const compactionOptions = {
@@ -366,7 +367,10 @@ export class AgentSession {
     if (muxMeta?.type === "compaction-request" && muxMeta.parsed.continueMessage && options) {
       // Strip out edit-specific and compaction-specific fields so the queued message is a fresh user message
       const { muxMetadata, mode, editMessageId, ...continueOptions } = options;
-      this.messageQueue.add(muxMeta.parsed.continueMessage, continueOptions);
+      this.messageQueue.add(muxMeta.parsed.continueMessage.text, {
+        ...continueOptions,
+        imageParts: muxMeta.parsed.continueMessage.imageParts,
+      });
       this.emitQueuedMessageChanged();
     }
 

@@ -455,6 +455,38 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
 
     const messageText = input.trim();
 
+    // Prepare image parts once for reuse
+    const imageParts =
+      imageAttachments.length > 0
+        ? imageAttachments.map((img, index) => {
+            // Validate before sending to help with debugging
+            if (!img.url || typeof img.url !== "string") {
+              console.error(
+                `Image attachment [${index}] has invalid url:`,
+                typeof img.url,
+                img.url?.slice(0, 50)
+              );
+            }
+            if (!img.url?.startsWith("data:")) {
+              console.error(
+                `Image attachment [${index}] url is not a data URL:`,
+                img.url?.slice(0, 100)
+              );
+            }
+            if (!img.mediaType || typeof img.mediaType !== "string") {
+              console.error(
+                `Image attachment [${index}] has invalid mediaType:`,
+                typeof img.mediaType,
+                img.mediaType
+              );
+            }
+            return {
+              url: img.url,
+              mediaType: img.mediaType,
+            };
+          })
+        : undefined;
+
     // Route to creation handler for creation variant
     if (variant === "creation") {
       // Creation variant: simple message send + workspace creation
@@ -567,8 +599,10 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           const context: CommandHandlerContext = {
             workspaceId: props.workspaceId,
             sendMessageOptions,
+            imageParts,
             editMessageId: editingMessage?.id,
             setInput,
+            setImageAttachments,
             setIsSending,
             setToast,
             onCancelEdit: props.onCancelEdit,
@@ -633,6 +667,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
             workspaceId: props.workspaceId,
             sendMessageOptions,
             setInput,
+            setImageAttachments,
             setIsSending,
             setToast,
           };
@@ -659,35 +694,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
       const previousImageAttachments = [...imageAttachments];
 
       try {
-        // Prepare image parts if any
-        const imageParts = imageAttachments.map((img, index) => {
-          // Validate before sending to help with debugging
-          if (!img.url || typeof img.url !== "string") {
-            console.error(
-              `Image attachment [${index}] has invalid url:`,
-              typeof img.url,
-              img.url?.slice(0, 50)
-            );
-          }
-          if (!img.url?.startsWith("data:")) {
-            console.error(
-              `Image attachment [${index}] url is not a data URL:`,
-              img.url?.slice(0, 100)
-            );
-          }
-          if (!img.mediaType || typeof img.mediaType !== "string") {
-            console.error(
-              `Image attachment [${index}] has invalid mediaType:`,
-              typeof img.mediaType,
-              img.mediaType
-            );
-          }
-          return {
-            url: img.url,
-            mediaType: img.mediaType,
-          };
-        });
-
         // When editing a /compact command, regenerate the actual summarization request
         let actualMessageText = messageText;
         let muxMetadata: MuxFrontendMetadata | undefined;
@@ -704,6 +710,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
               workspaceId: props.workspaceId,
               maxOutputTokens: parsed.maxOutputTokens,
               continueMessage: parsed.continueMessage,
+              imageParts,
               model: parsed.model,
               sendMessageOptions,
             });
@@ -729,7 +736,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
             ...sendMessageOptions,
             ...compactionOptions,
             editMessageId: editingMessage?.id,
-            imageParts: imageParts.length > 0 ? imageParts : undefined,
+            imageParts,
             muxMetadata,
           }
         );
