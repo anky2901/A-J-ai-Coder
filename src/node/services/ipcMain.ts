@@ -1742,9 +1742,9 @@ export class IpcMain {
       // Add host
       sshArgs.push(config.sshConfig.host);
       // Add remote command to cd into directory and start shell
-      // Use single quotes to prevent local shell expansion
-      // exec $SHELL replaces the SSH process with the shell, avoiding nested processes
-      sshArgs.push(`cd '${config.remotePath.replace(/'/g, "'\\''")}' && exec $SHELL`);
+      // expandTildeForSSH handles proper quoting and $HOME expansion
+      const expandedPath = expandTildeForSSH(config.remotePath);
+      sshArgs.push(`cd ${expandedPath} && exec $SHELL -i`);
     }
 
     const logPrefix = isSSH ? "SSH terminal" : "terminal";
