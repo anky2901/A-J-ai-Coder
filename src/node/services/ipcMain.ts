@@ -1750,20 +1750,35 @@ export class IpcMain {
     const logPrefix = isSSH ? "SSH terminal" : "terminal";
 
     if (process.platform === "darwin") {
-      // macOS - try Ghostty for local, always use Terminal.app for SSH (proven to work)
-      const terminal = isSSH ? "terminal" : await this.findAvailableCommand(["ghostty", "terminal"]);
+      // macOS - try Ghostty first, fallback to Terminal.app
+      const terminal = await this.findAvailableCommand(["ghostty", "terminal"]);
       if (terminal === "ghostty") {
-        let cmd: string;
+        const cmd = "open";
         let args: string[];
         if (isSSH && sshArgs) {
-          // Ghostty: Call ghostty directly with SSH command
-          // This ensures the terminal stays open for the interactive SSH session
-          cmd = "ghostty";
-          args = ["ssh", ...sshArgs];
+          // Ghostty: Build SSH command with single-quoted remote command
+          // Format: ssh -t host 'cd /path && exec $SHELL'
+          // The remote command uses single quotes and plain $SHELL (not \$SHELL -i)
+          const expandedPath = expandTildeForSSH(config.remotePath);
+          const remoteCommand = `cd ${expandedPath} && exec \\$SHELL`;
+          
+          // Build SSH args without the remote command (we'll add it separately)
+          const sshBaseArgs: string[] = [];
+          if (config.sshConfig.port) {
+            sshBaseArgs.push("-p", String(config.sshConfig.port));
+          }
+          if (config.sshConfig.identityFile) {
+            sshBaseArgs.push("-i", config.sshConfig.identityFile);
+          }
+          sshBaseArgs.push("-t");
+          sshBaseArgs.push(config.sshConfig.host);
+          
+          // Build the full SSH command string with single-quoted remote command
+          const sshCommand = `ssh ${sshBaseArgs.join(" ")} '${remoteCommand.replace(/'/g, "'\\''")}'`;
+          args = ["-n", "-a", "Ghostty", "--args", `--command=${sshCommand}`];
         } else {
-          // Ghostty: Use open with working directory for local terminals
+          // Ghostty: Use -n to open new window, pass working directory via --args
           if (config.type !== "local") throw new Error("Expected local config");
-          cmd = "open";
           args = ["-n", "-a", "Ghostty", "--args", `--working-directory=${config.workspacePath}`];
         }
         log.info(`Opening ${logPrefix}: ${cmd} ${args.join(" ")}`);
