@@ -101,19 +101,18 @@ export class PTYService {
 
     if (runtime instanceof LocalRuntime) {
       // Local: Use node-pty or @lydell/node-pty
-      // Try @lydell/node-pty first (server mode with prebuilds)
-      // Fall back to node-pty (desktop mode after electron-rebuild)
+      // Try node-pty first and fall back to @lydell/node-pty if it fails
       // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       let pty: typeof import("node-pty");
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-        pty = require("@lydell/node-pty");
-        log.debug("Using @lydell/node-pty (prebuilt binaries)");
+          pty = require("node-pty");
+          log.debug("Using node-pty (rebuilt for Electron)");
       } catch {
         try {
           // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-          pty = require("node-pty");
-          log.debug("Using node-pty (rebuilt for Electron)");
+        pty = require("@lydell/node-pty");
+        log.debug("Using @lydell/node-pty (prebuilt binaries)");
         } catch (err) {
           log.error("Neither @lydell/node-pty nor node-pty available:", err);
           throw new Error(
