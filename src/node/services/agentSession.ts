@@ -23,6 +23,8 @@ import { Ok, Err } from "@/common/types/result";
 import { enforceThinkingPolicy } from "@/browser/utils/thinking/policy";
 import { createRuntime } from "@/node/runtime/runtimeFactory";
 import { MessageQueue } from "./messageQueue";
+import type { StreamEndEvent, StreamAbortEvent } from "@/common/types/stream";
+import { CompactionHandler } from "./compactionHandler";
 
 export interface AgentSessionChatEvent {
   workspaceId: string;
@@ -57,6 +59,7 @@ export class AgentSession {
     [];
   private disposed = false;
   private readonly messageQueue = new MessageQueue();
+  private readonly compactionHandler: CompactionHandler;
 
   constructor(options: AgentSessionOptions) {
     assert(options, "AgentSession requires options");
@@ -73,6 +76,12 @@ export class AgentSession {
     this.partialService = partialService;
     this.aiService = aiService;
     this.initStateManager = initStateManager;
+
+    this.compactionHandler = new CompactionHandler({
+      workspaceId: this.workspaceId,
+      historyService: this.historyService,
+      emitter: this.emitter,
+    });
 
     this.attachAiListeners();
     this.attachInitListeners();
@@ -346,14 +355,14 @@ export class AgentSession {
     return this.streamWithHistory(model, options);
   }
 
-  async interruptStream(): Promise<Result<void>> {
+  async interruptStream(abandonPartial?: boolean): Promise<Result<void>> {
     this.assertNotDisposed("interruptStream");
 
     if (!this.aiService.isStreaming(this.workspaceId)) {
       return Ok(undefined);
     }
 
-    const stopResult = await this.aiService.stopStream(this.workspaceId);
+    const stopResult = await this.aiService.stopStream(this.workspaceId, abandonPartial);
     if (!stopResult.success) {
       return Err(stopResult.error);
     }
@@ -396,7 +405,10 @@ export class AgentSession {
   }
 
   private attachAiListeners(): void {
-    const forward = (event: string, handler: (payload: WorkspaceChatMessage) => void) => {
+    const forward = (
+      event: string,
+      handler: (payload: WorkspaceChatMessage) => Promise<void> | void
+    ) => {
       const wrapped = (...args: unknown[]) => {
         const [payload] = args;
         if (
@@ -407,7 +419,7 @@ export class AgentSession {
         ) {
           return;
         }
-        handler(payload as WorkspaceChatMessage);
+        void handler(payload as WorkspaceChatMessage);
       };
       this.aiListeners.push({ event, handler: wrapped });
       this.aiService.on(event, wrapped as never);
@@ -425,14 +437,21 @@ export class AgentSession {
     forward("reasoning-delta", (payload) => this.emitChatEvent(payload));
     forward("reasoning-end", (payload) => this.emitChatEvent(payload));
 
-    forward("stream-end", (payload) => {
-      this.emitChatEvent(payload);
+    forward("stream-end", async (payload) => {
+      const handled = await this.compactionHandler.handleCompletion(payload as StreamEndEvent);
+      if (!handled) {
+        this.emitChatEvent(payload);
+      }
       // Stream end: auto-send queued messages
       this.sendQueuedMessages();
     });
 
-    forward("stream-abort", (payload) => {
-      this.emitChatEvent(payload);
+    forward("stream-abort", async (payload) => {
+      const handled = await this.compactionHandler.handleAbort(payload as StreamAbortEvent);
+      if (!handled) {
+        this.emitChatEvent(payload);
+      }
+
       // Stream aborted: restore queued messages to input
       if (!this.messageQueue.isEmpty()) {
         const displayText = this.messageQueue.getDisplayText();
