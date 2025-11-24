@@ -271,6 +271,15 @@ export class AgentSession {
     }
 
     if (options?.editMessageId) {
+      // Interrupt an existing stream or compaction, if active
+      if (this.aiService.isStreaming(this.workspaceId)) {
+        // MUST use abandonPartial=true to prevent handleAbort from performing partial compaction
+        // with mismatched history (since we're about to truncate it)
+        const stopResult = await this.interruptStream(/* abandonPartial */ true);
+        if (!stopResult.success) {
+          return Err(createUnknownSendMessageError(stopResult.error));
+        }
+      }
       const truncateResult = await this.historyService.truncateAfterMessage(
         this.workspaceId,
         options.editMessageId
@@ -360,6 +369,16 @@ export class AgentSession {
 
     if (!this.aiService.isStreaming(this.workspaceId)) {
       return Ok(undefined);
+    }
+
+    // Delete partial BEFORE stopping to prevent abort handler from committing it
+    // The abort handler in aiService.ts runs immediately when stopStream is called,
+    // so we must delete first to ensure it finds no partial to commit
+    if (abandonPartial) {
+      const deleteResult = await this.partialService.deletePartial(this.workspaceId);
+      if (!deleteResult.success) {
+        return Err(deleteResult.error);
+      }
     }
 
     const stopResult = await this.aiService.stopStream(this.workspaceId, abandonPartial);
