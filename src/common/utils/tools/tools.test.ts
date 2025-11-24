@@ -167,6 +167,7 @@ describe("getToolsForModel", () => {
       [],
       expect.objectContaining({
         overflowPolicy: "tmpfile",
+        persistentTempDir: config.runtimeTempDir,
       })
     );
 

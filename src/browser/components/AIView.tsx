@@ -570,26 +570,10 @@ const AIViewInner: React.FC<AIViewProps> = ({
               <PinnedTodoList workspaceId={workspaceId} />
               {canInterrupt && (
                 <StreamingBarrier
-                  statusText={
-                    isCompacting
-                      ? currentModel
-                        ? `${getModelName(currentModel)} compacting...`
-                        : "compacting..."
-                      : currentModel
-                        ? `${getModelName(currentModel)} streaming...`
-                        : "streaming..."
-                  }
-                  cancelText={`hit ${formatKeybind(vimEnabled ? KEYBINDS.INTERRUPT_STREAM_VIM : KEYBINDS.INTERRUPT_STREAM_NORMAL)} to cancel`}
-                  tokenCount={
-                    activeStreamMessageId
-                      ? aggregator.getStreamingTokenCount(activeStreamMessageId)
-                      : undefined
-                  }
-                  tps={
-                    activeStreamMessageId
-                      ? aggregator.getStreamingTPS(activeStreamMessageId)
-                      : undefined
-                  }
+                  statusText={streamingStatusText}
+                  cancelText={streamingCancelText}
+                  tokenCount={streamingTokenCount}
+                  tps={streamingTPS}
                 />
               )}
               {workspaceState?.queuedMessage && (

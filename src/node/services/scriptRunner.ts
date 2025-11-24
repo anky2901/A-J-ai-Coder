@@ -36,6 +36,12 @@ export interface RunScriptOptions {
   timeoutSecs?: number;
   abortSignal?: AbortSignal;
   overflowPolicy?: "truncate" | "tmpfile";
+  /**
+   * Optional persistent temp directory root (e.g., stream-scoped ~/.mux-tmp/<token>).
+   * When provided, scriptRunner will place its temp files in a unique subdirectory inside
+   * this root so overflow logs can survive until the stream-level cleanup runs.
+   */
+  persistentTempDir?: string;
 }
 
 /**
@@ -55,6 +61,7 @@ export async function runWorkspaceScript(
     timeoutSecs = 300,
     abortSignal,
     overflowPolicy = "truncate",
+    persistentTempDir,
   } = options;
 
   // 1. Validate script name safely
@@ -120,12 +127,24 @@ export async function runWorkspaceScript(
   }
 
   // 3. Prepare temporary environment (MUX_OUTPUT, MUX_PROMPT)
-  // Create a temp directory for this execution context
-  const tempDirResult = await execBuffered(
-    runtime,
-    "mktemp -d 2>/dev/null || mktemp -d -t 'mux-script'",
-    { cwd: workspacePath, timeout: 5 }
-  );
+  // Create a temp directory for this execution context. When a persistent temp root is provided,
+  // create a unique subdirectory inside it so overflow logs survive until stream cleanup.
+  const normalizeForShell = (value: string): string => value.replace(/\\/g, "/");
+  const escapeSingleQuotes = (value: string): string => value.replace(/'/g, "'\\''");
+
+  const persistentBase =
+    persistentTempDir && persistentTempDir.trim().length > 0
+      ? normalizeForShell(persistentTempDir.trim()).replace(/\/+$/, "")
+      : undefined;
+
+  const tempDirCommand = persistentBase
+    ? `mkdir -p '${escapeSingleQuotes(persistentBase)}' && mktemp -d '${escapeSingleQuotes(`${persistentBase}/script-XXXXXX`)}'`
+    : "mktemp -d 2>/dev/null || mktemp -d -t 'mux-script'";
+
+  const tempDirResult = await execBuffered(runtime, tempDirCommand, {
+    cwd: workspacePath,
+    timeout: 5,
+  });
 
   if (tempDirResult.exitCode !== 0) {
     return Err(`Failed to prepare script environment: ${tempDirResult.stderr || "mkdir failed"}`);
@@ -136,6 +155,20 @@ export async function runWorkspaceScript(
     return Err("Failed to prepare script environment: runtime temp directory was empty");
   }
 
+  let skipCleanup = false;
+  let cleanupScheduled = false;
+  const cleanupTempDir = (): void => {
+    if (skipCleanup || cleanupScheduled) {
+      return;
+    }
+    cleanupScheduled = true;
+    const safeTempDir = runtimeTempDir.replace(/"/g, '\\"');
+    void execBuffered(runtime, `rm -rf "${safeTempDir}"`, {
+      cwd: workspacePath,
+      timeout: 5,
+    });
+  };
+
   const outputFile = path.posix.join(runtimeTempDir, "output.txt");
   const promptFile = path.posix.join(runtimeTempDir, "prompt.txt");
 
@@ -143,6 +176,7 @@ export async function runWorkspaceScript(
     await writeFileString(runtime, outputFile, "");
     await writeFileString(runtime, promptFile, "");
   } catch (prepError) {
+    cleanupTempDir();
     return Err(
       `Failed to prepare script environment files: ${
         prepError instanceof Error ? prepError.message : String(prepError)
@@ -220,8 +254,18 @@ export async function runWorkspaceScript(
       /* ignore */
     }
 
-    // 7. Cleanup (best effort)
-    void execBuffered(runtime, `rm -rf "${runtimeTempDir}"`, { cwd: workspacePath, timeout: 5 });
+    const indicatesTmpfileOverflow =
+      Boolean(persistentBase) &&
+      overflowPolicy === "tmpfile" &&
+      !toolResult.success &&
+      typeof toolResult.error === "string" &&
+      toolResult.error.includes("[OUTPUT OVERFLOW -");
+
+    if (indicatesTmpfileOverflow) {
+      skipCleanup = true;
+    } else {
+      cleanupTempDir();
+    }
 
     // Extract stdout/stderr based on success/failure
     let stdout = "";
@@ -243,6 +287,7 @@ export async function runWorkspaceScript(
       toolResult,
     });
   } catch (execError) {
+    cleanupTempDir();
     return Err(
       `Script execution failed: ${execError instanceof Error ? execError.message : String(execError)}`
     );

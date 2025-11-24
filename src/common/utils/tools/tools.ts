@@ -137,6 +137,7 @@ export async function getToolsForModel(
               secrets: config.secrets ?? {},
               timeoutSecs: 300,
               overflowPolicy: "tmpfile",
+              persistentTempDir: config.runtimeTempDir,
             }
           );
 
