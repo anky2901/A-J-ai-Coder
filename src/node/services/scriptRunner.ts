@@ -1,6 +1,11 @@
 import * as path from "path";
 import { type Runtime } from "@/node/runtime/Runtime";
-import { getScriptPath, getScriptsDir } from "@/utils/scripts/discovery";
+import {
+  getScriptPath,
+  getScriptsDir,
+  getLegacyScriptPath,
+  getLegacyScriptsDir,
+} from "@/utils/scripts/discovery";
 import { createBashTool } from "@/node/services/tools/bash";
 import { writeFileString, readFileString, execBuffered } from "@/node/utils/runtime/helpers";
 import { Ok, Err, type Result } from "@/common/types/result";
@@ -60,43 +65,34 @@ export async function runWorkspaceScript(
   }
 
   // Resolve real paths to handle symlinks and prevent escape
-  const scriptPath = getScriptPath(workspacePath, scriptName);
-  const scriptsDir = getScriptsDir(workspacePath);
+  const canonicalScriptPath = getScriptPath(workspacePath, scriptName);
+  const canonicalScriptsDir = getScriptsDir(workspacePath);
+
+  const legacyScriptPath = getLegacyScriptPath(workspacePath, scriptName);
+  const legacyScriptsDir = getLegacyScriptsDir(workspacePath);
 
   let resolvedScriptPath: string;
   let resolvedScriptsDir: string;
 
   try {
-    // Use runtime.resolvePath (which should behave like realpath) if available,
-    // otherwise rely on the runtime-specific normalization.
-    // Ideally, we want `realpath` behavior here.
-    // Since the Runtime interface doesn't strictly expose `realpath`, we'll rely on
-    // the filesystem (via runtime.exec or similar) or assume normalizePath+standard checks are mostly sufficient.
-    // HOWEVER, for local runtime we can use fs.realpath. For SSH, we might need a command.
-    // To keep it simple and robust within the existing abstractions:
-    // We will use the runtime to resolve the path if possible, but `runtime.resolvePath`
-    // is documented to expand tildes, not necessarily resolve symlinks (though it often does).
-
-    // BUT, to address the specific review concern about symlinks:
-    // We should try to get the canonical path.
-    // Note: checking containment purely by string path on un-resolved paths is weak against symlinks.
-
-    // Strategy:
-    // 1. Get the script path (constructed from workspace + script name).
-    // 2. Get the scripts dir.
-    // 3. Ask runtime to resolve them to absolute, canonical paths (resolving symlinks).
-    //    (If runtime doesn't support explicit symlink resolution in its API, we might be limited).
-    //    The review implies we *should* do this.
-    //    Let's add a helper or use `runtime.resolvePath` which claims to resolve to "absolute, canonical form".
-
-    resolvedScriptPath = await runtime.resolvePath(scriptPath);
-    resolvedScriptsDir = await runtime.resolvePath(scriptsDir);
+    // Try canonical path first
+    const candidatePath = await runtime.resolvePath(canonicalScriptPath);
+    await runtime.stat(candidatePath); // Throws if not exists
+    resolvedScriptPath = candidatePath;
+    resolvedScriptsDir = await runtime.resolvePath(canonicalScriptsDir);
   } catch {
-    // If we can't resolve paths (e.g. file doesn't exist), we can't verify containment securely.
-    // But we already established the script *must* exist in step 2 (which we moved up or will do).
-    // Actually step 2 is below. Let's do existence check + resolution together or accept that
-    // resolution failure implies non-existence.
-    return Err(`Script not found or inaccessible: ${scriptName}`);
+    try {
+      // Try legacy path fallback
+      const candidateLegacyPath = await runtime.resolvePath(legacyScriptPath);
+      await runtime.stat(candidateLegacyPath); // Throws if not exists
+      resolvedScriptPath = candidateLegacyPath;
+      resolvedScriptsDir = await runtime.resolvePath(legacyScriptsDir);
+    } catch {
+      // Both missing. Default to canonical so the error message later (in step 2)
+      // correctly reports the canonical path as missing.
+      resolvedScriptPath = await runtime.resolvePath(canonicalScriptPath);
+      resolvedScriptsDir = await runtime.resolvePath(canonicalScriptsDir);
+    }
   }
 
   // Use runtime-aware normalization on the RESOLVED paths
@@ -115,11 +111,11 @@ export async function runWorkspaceScript(
   try {
     const stat = await runtime.stat(resolvedScriptPath);
     if (stat.isDirectory) {
-      return Err(`Script not found: .cmux/scripts/${scriptName}`);
+      return Err(`Script is a directory: ${scriptName}`);
     }
   } catch {
     return Err(
-      `Script not found: .cmux/scripts/${scriptName}. Create the script in your workspace and make it executable (chmod +x).`
+      `Script not found: .mux/scripts/${scriptName}. Create the script in your workspace and make it executable (chmod +x).`
     );
   }
 

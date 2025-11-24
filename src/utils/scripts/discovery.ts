@@ -1,3 +1,4 @@
+import { MUX_DIR_NAME, LEGACY_MUX_DIR_NAME } from "@/common/constants/paths";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as path from "path";
@@ -27,7 +28,7 @@ interface CacheEntry {
 const scriptCache = new WeakMap<Runtime, Map<string, CacheEntry>>();
 
 /**
- * List all scripts in .cmux/scripts/ directory for a workspace
+ * List all scripts in .mux/scripts/ (and .cmux/scripts/) directory for a workspace
  * @param runtime - Runtime to use for listing scripts (supports local and SSH)
  * @param workspacePath - Path to the workspace directory
  * @returns Array of script information, sorted by name
@@ -90,26 +91,34 @@ async function discoverScriptsInternal(
   workspacePath: string
 ): Promise<ScriptInfo[]> {
   const scriptsDir = getScriptsDir(workspacePath);
+  const legacyScriptsDir = getLegacyScriptsDir(workspacePath);
+
   // Unique separator unlikely to appear in filenames or output
   const separator = ":::MUX_SCRIPT_START:::";
 
   // Single command to find, check executable status, and read headers of all scripts
-  // 1. Check if directory exists
-  // 2. Loop through files
-  // 3. Print separator + filename
-  // 4. Print executable status
-  // 5. Print first 20 lines (for description extraction)
+  // We scan both canonical and legacy directories.
+  // 1. Loop through dirs
+  // 2. Check if directory exists
+  // 3. Loop through files
+  // 4. Print separator + filename
+  // 5. Print executable status
+  // 6. Print first 20 lines (for description extraction)
   // Note: We quote paths to prevent shell injection
   const safeScriptsDir = scriptsDir.replace(/'/g, "'\\''");
+  const safeLegacyScriptsDir = legacyScriptsDir.replace(/'/g, "'\\''");
+
   const command = `
-    if [ -d '${safeScriptsDir}' ]; then
-      for f in '${safeScriptsDir}'/*; do
-        [ -f "$f" ] || continue
-        echo "${separator}$(basename "$f")"
-        if [ -x "$f" ]; then echo "IS_EXECUTABLE:1"; else echo "IS_EXECUTABLE:0"; fi
-        head -n 20 "$f" 2>/dev/null
-      done
-    fi
+    for dir in '${safeScriptsDir}' '${safeLegacyScriptsDir}'; do
+      if [ -d "$dir" ]; then
+        for f in "$dir"/*; do
+          [ -f "$f" ] || continue
+          echo "${separator}$(basename "$f")"
+          if [ -x "$f" ]; then echo "IS_EXECUTABLE:1"; else echo "IS_EXECUTABLE:0"; fi
+          head -n 20 "$f" 2>/dev/null
+        done
+      fi
+    done
   `;
 
   try {
@@ -127,7 +136,7 @@ async function discoverScriptsInternal(
       return [];
     }
 
-    const scripts: ScriptInfo[] = [];
+    const scriptsMap = new Map<string, ScriptInfo>();
     const parts = output.split(separator);
 
     // First part is empty or garbage before first separator
@@ -138,6 +147,11 @@ async function discoverScriptsInternal(
 
       const filename = lines[0].trim();
       if (!filename) continue;
+
+      // If we already found this script (e.g. in canonical dir), skip legacy one
+      if (scriptsMap.has(filename)) {
+        continue;
+      }
 
       // Find executable status
       let isExecutable = false;
@@ -152,14 +166,14 @@ async function discoverScriptsInternal(
       const content = lines.slice(contentStartLine).join("\n");
       const description = extractDescriptionFromContent(content);
 
-      scripts.push({
+      scriptsMap.set(filename, {
         name: filename,
         description,
         isExecutable,
       });
     }
 
-    return scripts.sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(scriptsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   } catch {
     return [];
   }
@@ -233,17 +247,36 @@ function joinWorkspacePath(workspacePath: string, ...parts: string[]): string {
  * @returns Path to scripts directory
  */
 export function getScriptsDir(workspacePath: string): string {
-  return joinWorkspacePath(workspacePath, ".cmux", "scripts");
+  return joinWorkspacePath(workspacePath, MUX_DIR_NAME, "scripts");
 }
 
 /**
- * Get the full path to a script
+ * Get the legacy scripts directory path
+ * @param workspacePath - Path to the workspace directory
+ * @returns Path to legacy scripts directory
+ */
+export function getLegacyScriptsDir(workspacePath: string): string {
+  return joinWorkspacePath(workspacePath, LEGACY_MUX_DIR_NAME, "scripts");
+}
+
+/**
+ * Get the full path to a script (canonical location)
  * @param workspacePath - Path to the workspace directory
  * @param scriptName - Name of the script file
  * @returns Full path to script
  */
 export function getScriptPath(workspacePath: string, scriptName: string): string {
-  return joinWorkspacePath(workspacePath, ".cmux", "scripts", scriptName);
+  return joinWorkspacePath(workspacePath, MUX_DIR_NAME, "scripts", scriptName);
+}
+
+/**
+ * Get the full path to a script (legacy location)
+ * @param workspacePath - Path to the workspace directory
+ * @param scriptName - Name of the script file
+ * @returns Full path to script
+ */
+export function getLegacyScriptPath(workspacePath: string, scriptName: string): string {
+  return joinWorkspacePath(workspacePath, LEGACY_MUX_DIR_NAME, "scripts", scriptName);
 }
 
 /**
@@ -257,11 +290,17 @@ export async function checkScriptExecutable(
   scriptName: string
 ): Promise<boolean> {
   const scriptPath = getScriptPath(workspacePath, scriptName);
+  const legacyScriptPath = getLegacyScriptPath(workspacePath, scriptName);
 
   try {
     await fsPromises.access(scriptPath, fs.constants.X_OK);
     return true;
   } catch {
-    return false;
+    try {
+      await fsPromises.access(legacyScriptPath, fs.constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

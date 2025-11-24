@@ -617,7 +617,7 @@ const newCommandDefinition: SlashCommandDefinition = {
 
 const scriptCommandDefinition: SlashCommandDefinition = {
   key: "script",
-  description: "Execute a script from .cmux/scripts/",
+  description: "Execute a script from .mux/scripts/",
   handler: ({ cleanRemainingTokens }): ParsedCommand => {
     if (cleanRemainingTokens.length === 0) {
       return { type: "script-help" };
@@ -637,7 +637,7 @@ const scriptCommandDefinition: SlashCommandDefinition = {
     if (stage === 1 && context.availableScripts) {
       const scripts = context.availableScripts.map((script) => ({
         key: script.name,
-        description: script.description ?? `Run .cmux/scripts/${script.name}`,
+        description: script.description ?? `Run .mux/scripts/${script.name}`,
       }));
 
       return filterAndMapSuggestions(scripts, partialToken, (definition) => ({

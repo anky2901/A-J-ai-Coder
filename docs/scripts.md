@@ -4,21 +4,21 @@ Execute custom scripts from your workspace using slash commands or let the AI Ag
 
 ## Overview
 
-Scripts are stored in `.cmux/scripts/` within each workspace. They serve two purposes:
+Scripts are stored in `.mux/scripts/` within each workspace. They serve two purposes:
 
 1. **Human Use**: Executable via `/script <name>` or `/s <name>` in chat.
 2. **Agent Use**: Automatically exposed to the AI as tools (`script_<name>`), allowing the agent to run complex workflows you define.
 
 Scripts run in the workspace directory with full access to project secrets and environment variables.
 
-**Key Point**: Scripts are workspace-specific. Each workspace has its own custom toolkit defined in `.cmux/scripts/`.
+**Key Point**: Scripts are workspace-specific. Each workspace has its own custom toolkit defined in `.mux/scripts/`.
 
 ## Creating Scripts
 
 1. **Create the scripts directory**:
 
    ```bash
-   mkdir -p .cmux/scripts
+   mkdir -p .mux/scripts
    ```
 
 2. **Add an executable script**:
@@ -39,12 +39,12 @@ Scripts run in the workspace directory with full access to project secrets and e
 3. **Make it executable**:
 
    ```bash
-   chmod +x .cmux/scripts/deploy
+   chmod +x .mux/scripts/deploy
    ```
 
 ## Agent Integration (AI Tools)
 
-Every executable script in `.cmux/scripts/` is automatically registered as a tool for the AI Agent.
+Every executable script in `.mux/scripts/` is automatically registered as a tool for the AI Agent.
 
 - **Tool Name**: `script_<name>` (e.g., `deploy` -> `script_deploy`, `run-tests` -> `script_run_tests`)
 - **Tool Description**: Taken from the script's header comment (`# Description: ...`).
@@ -185,7 +185,7 @@ curl -sL "$1"
 
 ## Script Discovery
 
-- Scripts are discovered automatically from `.cmux/scripts/` in the current workspace.
+- Scripts are discovered automatically from `.mux/scripts/` in the current workspace.
 - Discovery is cached for performance but refreshes intelligently.
 - **Sanitization**: Script names are sanitized for tool use (e.g., `my-script.sh` -> `script_my_script_sh`).
 
@@ -193,8 +193,8 @@ curl -sL "$1"
 
 **Script not appearing in suggestions or tools?**
 
-- Ensure file is executable: `chmod +x .cmux/scripts/scriptname`
-- Verify file is in `.cmux/scripts/` directory.
+- Ensure file is executable: `chmod +x .mux/scripts/scriptname`
+- Verify file is in `.mux/scripts/` directory.
 - Check for valid description header.
 
 **Agent using script incorrectly?**

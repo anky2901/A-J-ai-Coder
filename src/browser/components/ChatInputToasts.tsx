@@ -133,7 +133,7 @@ export const createCommandToast = (parsed: ParsedCommand): Toast | null => {
         id: Date.now().toString(),
         type: "error",
         title: "Script Command",
-        message: "Execute a script from .cmux/scripts/",
+        message: "Execute a script from .mux/scripts/",
         solution: (
           <>
             <SolutionLabel>Usage:</SolutionLabel>
@@ -149,7 +149,7 @@ export const createCommandToast = (parsed: ParsedCommand): Toast | null => {
             <br />
             <br />
             <SolutionLabel>Note:</SolutionLabel>
-            Scripts must be executable (chmod +x) and located in .cmux/scripts/
+            Scripts must be executable (chmod +x) and located in .mux/scripts/
           </>
         ),
       };

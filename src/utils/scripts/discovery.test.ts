@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import type { Runtime } from "@/node/runtime/Runtime";
-import { listScripts, getScriptPath } from "./discovery";
+import { listScripts, getScriptPath, getLegacyScriptPath } from "./discovery";
 import * as path from "path";
 
 // Mock runtime for testing
@@ -215,6 +215,35 @@ describe("listScripts", () => {
       },
     ]);
   });
+
+  test("deduplicates scripts found in both locations (prefers canonical)", async () => {
+    // Construct output where the same script appears twice
+    // Since our implementation scans canonical first, the first occurrence is canonical
+    const output = [
+      `${separator}dup-script`,
+      "IS_EXECUTABLE:1",
+      "#!/bin/bash",
+      "# Description: Canonical version",
+      "echo canonical",
+      "",
+      `${separator}dup-script`,
+      "IS_EXECUTABLE:1",
+      "#!/bin/bash",
+      "# Description: Legacy version",
+      "echo legacy",
+    ].join("\n");
+
+    const runtime = createMockRuntime(new Map([[separator, { stdout: output, exitCode: 0 }]]));
+
+    const scripts = await listScripts(runtime, "/test/workspace/dup");
+    expect(scripts).toEqual([
+      {
+        name: "dup-script",
+        description: "Canonical version",
+        isExecutable: true,
+      },
+    ]);
+  });
 });
 
 describe("getScriptPath", () => {
@@ -222,7 +251,7 @@ describe("getScriptPath", () => {
     const workspacePath = "/home/user/workspace";
     const scriptName = "test.sh";
     // Explicitly check for forward slashes regardless of host OS
-    const expected = "/home/user/workspace/.cmux/scripts/test.sh";
+    const expected = "/home/user/workspace/.mux/scripts/test.sh";
     expect(getScriptPath(workspacePath, scriptName)).toBe(expected);
   });
 
@@ -230,7 +259,16 @@ describe("getScriptPath", () => {
     const workspacePath = "C:\\Users\\user\\workspace";
     const scriptName = "test.bat";
     // Should use path.join, which depends on the host OS running the test
-    const expected = path.join(workspacePath, ".cmux", "scripts", scriptName);
+    const expected = path.join(workspacePath, ".mux", "scripts", scriptName);
     expect(getScriptPath(workspacePath, scriptName)).toBe(expected);
+  });
+});
+
+describe("getLegacyScriptPath", () => {
+  test("returns path in .cmux", () => {
+    const workspacePath = "/home/user/workspace";
+    const scriptName = "test.sh";
+    const expected = "/home/user/workspace/.cmux/scripts/test.sh";
+    expect(getLegacyScriptPath(workspacePath, scriptName)).toBe(expected);
   });
 });

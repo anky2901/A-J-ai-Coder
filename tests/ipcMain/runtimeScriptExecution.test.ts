@@ -75,8 +75,8 @@ describeIntegration("Workspace script execution", () => {
             try {
               const scriptName = "runtime-demo";
               const scriptSetup = `
-mkdir -p .cmux/scripts
-cat <<'EOF' > .cmux/scripts/${scriptName}
+mkdir -p .mux/scripts
+cat <<'EOF' > .mux/scripts/${scriptName}
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -86,6 +86,70 @@ fi
 
 if [ -n "\${MUX_PROMPT:-}" ]; then
   printf "Prompt via MUX_PROMPT" > "\${MUX_PROMPT}"
+fi
+EOF
+chmod +x .mux/scripts/${scriptName}
+`;
+
+              const setupResult = await env.mockIpcRenderer.invoke(
+                IPC_CHANNELS.WORKSPACE_EXECUTE_BASH,
+                workspaceId,
+                scriptSetup
+              );
+
+              expect(setupResult.success).toBe(true);
+              expect(setupResult.data.success).toBe(true);
+
+              const executionResult = await env.mockIpcRenderer.invoke(
+                IPC_CHANNELS.WORKSPACE_EXECUTE_SCRIPT,
+                workspaceId,
+                scriptName
+              );
+
+              expect(executionResult.success).toBe(true);
+              expect(executionResult.data.success).toBe(true);
+              expect(executionResult.data.exitCode).toBe(0);
+              expect(executionResult.data.outputFile).toBe("Toast via MUX_OUTPUT");
+              expect(executionResult.data.promptFile).toBe("Prompt via MUX_PROMPT");
+            } finally {
+              await cleanup();
+            }
+          } finally {
+            await cleanupTempGitRepo(tempGitRepo);
+            await cleanupTestEnvironment(env);
+          }
+        },
+        type === "ssh" ? TEST_TIMEOUT_SSH_MS : TEST_TIMEOUT_LOCAL_MS
+      );
+
+      test.concurrent(
+        "writes MUX_OUTPUT and MUX_PROMPT when executing workspace script (legacy path)",
+        async () => {
+          const env = await createTestEnvironment();
+          const tempGitRepo = await createTempGitRepo();
+
+          try {
+            const branchName = generateBranchName("script-runtime-legacy");
+            const runtimeConfig = getRuntimeConfig(branchName);
+            const { workspaceId, cleanup } = await createWorkspaceWithInit(
+              env,
+              tempGitRepo,
+              branchName,
+              runtimeConfig,
+              true,
+              type === "ssh"
+            );
+
+            try {
+              const scriptName = "runtime-demo-legacy";
+              const scriptSetup = `
+mkdir -p .cmux/scripts
+cat <<'EOF' > .cmux/scripts/${scriptName}
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "\${MUX_OUTPUT:-}" ]; then
+  printf "Toast via MUX_OUTPUT" > "\${MUX_OUTPUT}"
 fi
 EOF
 chmod +x .cmux/scripts/${scriptName}
@@ -110,7 +174,6 @@ chmod +x .cmux/scripts/${scriptName}
               expect(executionResult.data.success).toBe(true);
               expect(executionResult.data.exitCode).toBe(0);
               expect(executionResult.data.outputFile).toBe("Toast via MUX_OUTPUT");
-              expect(executionResult.data.promptFile).toBe("Prompt via MUX_PROMPT");
             } finally {
               await cleanup();
             }
