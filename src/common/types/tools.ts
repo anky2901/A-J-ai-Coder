@@ -25,8 +25,6 @@ export type BashToolResult =
         reason: string;
         totalLines: number;
       };
-      outputFile?: string; // Content from MUX_OUTPUT env file
-      promptFile?: string; // Content from MUX_PROMPT env file
     })
   | (CommonBashFields & {
       success: false;
@@ -38,8 +36,6 @@ export type BashToolResult =
         reason: string;
         totalLines: number;
       };
-      outputFile?: string; // Content from MUX_OUTPUT env file
-      promptFile?: string; // Content from MUX_PROMPT env file
     });
 
 // File Read Tool Types

@@ -117,7 +117,7 @@ describe("getToolsForModel", () => {
     expect(demoTool).toBeDefined();
   });
 
-  it("should include MUX_PROMPT and MUX_OUTPUT in tool result", async () => {
+  it("should return stdout as agent-visible output", async () => {
     const mockScripts = [
       {
         name: "diagnose",
@@ -134,14 +134,12 @@ describe("getToolsForModel", () => {
       success: true,
       data: {
         exitCode: 0,
-        stdout: "Standard output",
+        stdout: "Standard output from script",
         stderr: "",
-        outputFileContent: "User notification",
-        promptFileContent: "Agent instruction",
         toolResult: {
           success: true,
           exitCode: 0,
-          output: "",
+          output: "Standard output from script",
           wall_duration_ms: 1000,
         },
       },
@@ -171,9 +169,98 @@ describe("getToolsForModel", () => {
       })
     );
 
-    expect(result).toContain("Standard output");
-    expect(result).toContain("--- MUX_OUTPUT ---\nUser notification");
-    expect(result).toContain("--- MUX_PROMPT ---\nAgent instruction");
+    expect(result).toContain("Standard output from script");
+    // stderr is frontend-only, should not appear in result on success
+    expect(result).not.toContain("Error:");
+  });
+
+  it("should return (no stdout) when script produces no output", async () => {
+    const mockScripts = [
+      {
+        name: "silent",
+        description: "Silent script",
+        isExecutable: true,
+      },
+    ];
+
+    const mockListScripts = listScripts as unknown as Mock<typeof listScripts>;
+    mockListScripts.mockResolvedValue(mockScripts);
+
+    const mockRunScript = runWorkspaceScript as unknown as Mock<typeof runWorkspaceScript>;
+    mockRunScript.mockResolvedValue({
+      success: true,
+      data: {
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        toolResult: {
+          success: true,
+          exitCode: 0,
+          output: "",
+          wall_duration_ms: 100,
+        },
+      },
+    });
+
+    const tools = await getToolsForModel(
+      "anthropic:claude-3-5-sonnet",
+      config,
+      "workspace-id",
+      mockInitStateManager
+    );
+
+    const silentTool = tools.script_silent as unknown as {
+      execute: (args: { args: string[] }) => Promise<string>;
+    };
+    const result = await silentTool.execute({ args: [] });
+
+    expect(result).toBe("(no stdout)");
+  });
+
+  it("should include stderr in result only on non-zero exit", async () => {
+    const mockScripts = [
+      {
+        name: "failing",
+        description: "Failing script",
+        isExecutable: true,
+      },
+    ];
+
+    const mockListScripts = listScripts as unknown as Mock<typeof listScripts>;
+    mockListScripts.mockResolvedValue(mockScripts);
+
+    const mockRunScript = runWorkspaceScript as unknown as Mock<typeof runWorkspaceScript>;
+    mockRunScript.mockResolvedValue({
+      success: true,
+      data: {
+        exitCode: 1,
+        stdout: "",
+        stderr: "Something went wrong",
+        toolResult: {
+          success: false,
+          exitCode: 1,
+          output: "",
+          error: "Something went wrong",
+          wall_duration_ms: 100,
+        },
+      },
+    });
+
+    const tools = await getToolsForModel(
+      "anthropic:claude-3-5-sonnet",
+      config,
+      "workspace-id",
+      mockInitStateManager
+    );
+
+    const failingTool = tools.script_failing as unknown as {
+      execute: (args: { args: string[] }) => Promise<string>;
+    };
+    const result = await failingTool.execute({ args: [] });
+
+    expect(result).toContain("(no stdout)");
+    expect(result).toContain("Error: Something went wrong");
+    expect(result).toContain("(Exit Code: 1)");
   });
 
   it("should handle script discovery failure gracefully", async () => {

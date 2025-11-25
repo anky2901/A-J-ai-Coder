@@ -96,22 +96,8 @@ export const ScriptExecutionMessage: React.FC<ScriptExecutionMessageProps> = ({
 
           {!isPending && result.output && (
             <DetailSection>
-              <DetailLabel>Stdout / Stderr</DetailLabel>
+              <DetailLabel>Output (agent-visible)</DetailLabel>
               <DetailContent>{result.output}</DetailContent>
-            </DetailSection>
-          )}
-
-          {!isPending && result.outputFile && (
-            <DetailSection>
-              <DetailLabel>MUX_OUTPUT</DetailLabel>
-              <DetailContent>{result.outputFile}</DetailContent>
-            </DetailSection>
-          )}
-
-          {!isPending && result.promptFile && (
-            <DetailSection>
-              <DetailLabel>MUX_PROMPT</DetailLabel>
-              <DetailContent>{result.promptFile}</DetailContent>
             </DetailSection>
           )}
 

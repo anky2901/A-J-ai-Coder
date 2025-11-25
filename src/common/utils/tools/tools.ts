@@ -147,27 +147,22 @@ export async function getToolsForModel(
 
           const scriptResult = result.data;
 
-          // Combine all outputs
+          // Build agent-visible output from stdout
+          // stderr is frontend-only (shown to user but not sent to agent)
           const parts: string[] = [];
 
           if (scriptResult.stdout.trim()) {
             parts.push(scriptResult.stdout);
+          } else {
+            parts.push("(no stdout)");
           }
 
-          if (scriptResult.stderr.trim()) {
-            parts.push(`Error: ${scriptResult.stderr}`);
-          }
-
+          // Include stderr prefix for non-zero exit to help agent understand failures
           if (scriptResult.exitCode !== 0) {
+            if (scriptResult.stderr.trim()) {
+              parts.push(`Error: ${scriptResult.stderr}`);
+            }
             parts.push(`(Exit Code: ${scriptResult.exitCode})`);
-          }
-
-          if (scriptResult.outputFileContent?.trim()) {
-            parts.push(`--- MUX_OUTPUT ---\n${scriptResult.outputFileContent.trim()}`);
-          }
-
-          if (scriptResult.promptFileContent?.trim()) {
-            parts.push(`--- MUX_PROMPT ---\n${scriptResult.promptFileContent.trim()}`);
           }
 
           return parts.join("\n\n");

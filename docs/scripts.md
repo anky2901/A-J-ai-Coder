@@ -61,7 +61,7 @@ To make your scripts effective AI tools:
    ```
 
 2. **Robustness**: Use `set -euo pipefail` to ensure the script fails loudly if something goes wrong, allowing the AI to catch the error.
-3. **Feedback**: Use `MUX_PROMPT` to guide the AI on what to do next if the script succeeds or fails (see below).
+3. **Clear Output**: Write structured output to stdout so the agent can understand results and take action.
 
 ## Usage
 
@@ -95,42 +95,33 @@ Scripts run with:
   - **Human**: Visible in the chat card.
   - **Agent**: Returned as the tool execution result.
 
-### Environment Variables
+### Standard Streams
 
-Scripts receive special environment variables for controlling cmux behavior and interacting with the agent:
+Scripts follow Unix conventions for output:
 
-#### `MUX_OUTPUT` (User Toasts)
+- **stdout**: Sent to the agent as the tool result. Use this for structured output the agent should act on.
+- **stderr**: Shown to the user in the UI but **not** sent to the agent. Use this for progress messages, logs, or debugging info that doesn't need AI attention.
 
-Path to a temporary file for custom toast display content. Write markdown here for rich formatting in the UI toast:
+This design means scripts work identically whether run inside mux or directly from the command line.
 
-```bash
-#!/usr/bin/env bash
-# Description: Deploy with custom output
-
-echo "Deploying..." # Logged to stdout
-
-# Write formatted output for toast display
-cat >> "$MUX_OUTPUT" << 'EOF'
-## 🚀 Deployment Complete
-
-✅ Successfully deployed to staging
-EOF
-```
-
-#### `MUX_PROMPT` (Agent Feedback)
-
-Path to a temporary file for **sending messages back to the agent**. This is powerful for "Human-in-the-loop" or "Chain-of-thought" workflows where a script performs an action and then asks the agent to analyze the result.
+#### Example: Test Runner
 
 ```bash
 #!/usr/bin/env bash
-# Description: Run tests and ask Agent to fix failures
+# Description: Run tests and report failures for the agent to fix
 
-if ! npm test > test.log 2>&1; then
-  echo "❌ Tests failed" >> "$MUX_OUTPUT"
+set -euo pipefail
 
-  # Feed the failure log back to the agent automatically
-  cat >> "$MUX_PROMPT" << EOF
-The test suite failed. Here is the log:
+# Progress to stderr (user sees it, agent doesn't)
+echo "Running test suite..." >&2
+
+if npm test > test.log 2>&1; then
+  # Success message to stdout (agent sees it)
+  echo "✅ All tests passed"
+else
+  # Structured failure info to stdout (agent sees and can act on it)
+  cat << EOF
+❌ Tests failed. Here is the log:
 
 \`\`\`
 $(cat test.log)
@@ -138,21 +129,15 @@ $(cat test.log)
 
 Please analyze this error and propose a fix.
 EOF
+  exit 1
 fi
 ```
 
 **Result**:
 
-1. Script fails.
-2. Agent receives the tool output (stderr/stdout) **PLUS** the content of `MUX_PROMPT` as part of the tool result.
-3. Agent can immediately act on the instructions in `MUX_PROMPT`.
-
-**Note**: If a human ran the script, the content of `MUX_PROMPT` is sent as a **new user message** to the agent, triggering a conversation.
-
-### File Size Limits
-
-- **MUX_OUTPUT**: Maximum 10KB (truncated if exceeded)
-- **MUX_PROMPT**: Maximum 100KB (truncated if exceeded)
+1. User sees "Running test suite..." progress message.
+2. On failure, agent receives the structured error with test log and instructions.
+3. Agent can immediately analyze and propose fixes.
 
 ## Example Scripts
 

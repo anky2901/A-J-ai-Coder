@@ -55,7 +55,7 @@ describeIntegration("Workspace script execution", () => {
       };
 
       test.concurrent(
-        "writes MUX_OUTPUT and MUX_PROMPT when executing workspace script",
+        "captures stdout as agent-visible output",
         async () => {
           const env = await createTestEnvironment();
           const tempGitRepo = await createTempGitRepo();
@@ -80,13 +80,8 @@ cat <<'EOF' > .mux/scripts/${scriptName}
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -n "\${MUX_OUTPUT:-}" ]; then
-  printf "Toast via MUX_OUTPUT" > "\${MUX_OUTPUT}"
-fi
-
-if [ -n "\${MUX_PROMPT:-}" ]; then
-  printf "Prompt via MUX_PROMPT" > "\${MUX_PROMPT}"
-fi
+# stdout goes to agent
+echo "Agent-visible output from script"
 EOF
 chmod +x .mux/scripts/${scriptName}
 `;
@@ -109,8 +104,7 @@ chmod +x .mux/scripts/${scriptName}
               expect(executionResult.success).toBe(true);
               expect(executionResult.data.success).toBe(true);
               expect(executionResult.data.exitCode).toBe(0);
-              expect(executionResult.data.outputFile).toBe("Toast via MUX_OUTPUT");
-              expect(executionResult.data.promptFile).toBe("Prompt via MUX_PROMPT");
+              expect(executionResult.data.output).toContain("Agent-visible output from script");
             } finally {
               await cleanup();
             }
@@ -123,7 +117,7 @@ chmod +x .mux/scripts/${scriptName}
       );
 
       test.concurrent(
-        "writes MUX_OUTPUT and MUX_PROMPT when executing workspace script (legacy path)",
+        "captures stdout from legacy .cmux/scripts path",
         async () => {
           const env = await createTestEnvironment();
           const tempGitRepo = await createTempGitRepo();
@@ -148,9 +142,7 @@ cat <<'EOF' > .cmux/scripts/${scriptName}
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -n "\${MUX_OUTPUT:-}" ]; then
-  printf "Toast via MUX_OUTPUT" > "\${MUX_OUTPUT}"
-fi
+echo "Legacy path output"
 EOF
 chmod +x .cmux/scripts/${scriptName}
 `;
@@ -173,7 +165,7 @@ chmod +x .cmux/scripts/${scriptName}
               expect(executionResult.success).toBe(true);
               expect(executionResult.data.success).toBe(true);
               expect(executionResult.data.exitCode).toBe(0);
-              expect(executionResult.data.outputFile).toBe("Toast via MUX_OUTPUT");
+              expect(executionResult.data.output).toContain("Legacy path output");
             } finally {
               await cleanup();
             }

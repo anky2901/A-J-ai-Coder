@@ -1,4 +1,3 @@
-import * as path from "path";
 import { type Runtime } from "@/node/runtime/Runtime";
 import {
   getScriptPath,
@@ -7,28 +6,28 @@ import {
   getLegacyScriptsDir,
 } from "@/utils/scripts/discovery";
 import { createBashTool } from "@/node/services/tools/bash";
-import { writeFileString, readFileString, execBuffered } from "@/node/utils/runtime/helpers";
+import { execBuffered } from "@/node/utils/runtime/helpers";
 import { Ok, Err, type Result } from "@/common/types/result";
 import { type BashToolResult } from "@/common/types/tools";
 
 /**
- * Result of a script execution, including standard output/error and special MUX file contents
+ * Result of a script execution.
+ *
+ * Semantics:
+ * - stdout: Agent-visible output (sent to model as tool result)
+ * - stderr: Frontend-only output (shown to user, not sent to model)
  */
 export interface ScriptExecutionResult {
   exitCode: number;
   stdout: string;
   stderr: string;
-  /** Content written to MUX_OUTPUT (for user toasts) */
-  outputFileContent?: string;
-  /** Content written to MUX_PROMPT (for agent prompts) */
-  promptFileContent?: string;
   /** Raw execution result from the underlying bash tool */
   toolResult: BashToolResult;
 }
 
 /**
- * Execute a workspace script with full environment setup (MUX_OUTPUT, MUX_PROMPT, etc.)
- * Reuses the robust createBashTool internally for consistent execution handling.
+ * Execute a workspace script.
+ * Reuses createBashTool internally for consistent execution handling.
  */
 export interface RunScriptOptions {
   env?: Record<string, string>;
@@ -45,8 +44,8 @@ export interface RunScriptOptions {
 }
 
 /**
- * Execute a workspace script with full environment setup (MUX_OUTPUT, MUX_PROMPT, etc.)
- * Reuses the robust createBashTool internally for consistent execution handling.
+ * Execute a workspace script.
+ * Reuses createBashTool internally for consistent execution handling.
  */
 export async function runWorkspaceScript(
   runtime: Runtime,
@@ -126,7 +125,7 @@ export async function runWorkspaceScript(
     );
   }
 
-  // 3. Prepare temporary environment (MUX_OUTPUT, MUX_PROMPT)
+  // 3. Prepare temporary environment for overflow handling
   // Create a temp directory for this execution context. When a persistent temp root is provided,
   // create a unique subdirectory inside it so overflow logs survive until stream cleanup.
   const normalizeForShell = (value: string): string => value.replace(/\\/g, "/");
@@ -169,21 +168,6 @@ export async function runWorkspaceScript(
     });
   };
 
-  const outputFile = path.posix.join(runtimeTempDir, "output.txt");
-  const promptFile = path.posix.join(runtimeTempDir, "prompt.txt");
-
-  try {
-    await writeFileString(runtime, outputFile, "");
-    await writeFileString(runtime, promptFile, "");
-  } catch (prepError) {
-    cleanupTempDir();
-    return Err(
-      `Failed to prepare script environment files: ${
-        prepError instanceof Error ? prepError.message : String(prepError)
-      }`
-    );
-  }
-
   // 4. Build the command
   // Quote arguments safely - basic quote wrapping for bash
   const escapedArgs = args
@@ -208,11 +192,7 @@ export async function runWorkspaceScript(
     secrets: secrets,
     runtimeTempDir,
     overflow_policy: overflowPolicy,
-    env: {
-      ...env,
-      MUX_OUTPUT: outputFile,
-      MUX_PROMPT: promptFile,
-    },
+    env,
   });
 
   try {
@@ -228,32 +208,7 @@ export async function runWorkspaceScript(
       }
     )) as BashToolResult;
 
-    // 6. Read back the MUX files
-    const MAX_OUTPUT_SIZE = 10 * 1024;
-    const MAX_PROMPT_SIZE = 100 * 1024;
-
-    let outputFileContent = "";
-    try {
-      const content = await readFileString(runtime, outputFile);
-      outputFileContent =
-        content.length > MAX_OUTPUT_SIZE
-          ? content.substring(0, MAX_OUTPUT_SIZE) + "\n\n[Truncated - output too large]"
-          : content;
-    } catch {
-      /* ignore */
-    }
-
-    let promptFileContent = "";
-    try {
-      const content = await readFileString(runtime, promptFile);
-      promptFileContent =
-        content.length > MAX_PROMPT_SIZE
-          ? content.substring(0, MAX_PROMPT_SIZE) + "\n\n[Truncated - prompt too large]"
-          : content;
-    } catch {
-      /* ignore */
-    }
-
+    // 6. Handle cleanup for overflow cases
     const indicatesTmpfileOverflow =
       Boolean(persistentBase) &&
       overflowPolicy === "tmpfile" &&
@@ -282,8 +237,6 @@ export async function runWorkspaceScript(
       exitCode: toolResult.exitCode,
       stdout,
       stderr,
-      outputFileContent,
-      promptFileContent,
       toolResult,
     });
   } catch (execError) {

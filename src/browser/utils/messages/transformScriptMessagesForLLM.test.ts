@@ -4,7 +4,7 @@ import type { MuxMessage } from "@/common/types/message";
 import type { BashToolResult } from "@/common/types/tools";
 
 describe("transformScriptMessagesForLLM", () => {
-  it("should include stdout/stderr in script execution messages", () => {
+  it("should include output in script execution messages", () => {
     const scriptResult: BashToolResult = {
       success: true,
       output: "some stdout output",
@@ -38,34 +38,32 @@ describe("transformScriptMessagesForLLM", () => {
     expect(textPart.type).toBe("text");
     if (textPart.type === "text") {
       expect(textPart.text).toContain("Script 'test.sh' executed");
-      expect(textPart.text).toContain("Stdout/Stderr:");
+      expect(textPart.text).toContain("Output:");
       expect(textPart.text).toContain("some stdout output");
     }
   });
 
-  it("should exclude MUX_OUTPUT and MUX_PROMPT from script execution messages (avoid duplication)", () => {
+  it("should show (no output) when script has empty stdout", () => {
     const scriptResult: BashToolResult = {
       success: true,
-      output: "stdout stuff",
+      output: "",
       exitCode: 0,
       wall_duration_ms: 100,
-      outputFile: "User toast",
-      promptFile: "Model prompt",
     };
 
     const messages: MuxMessage[] = [
       {
-        id: "script-all",
+        id: "script-empty",
         role: "user",
-        parts: [{ type: "text", text: "Executed script: /script all" }],
+        parts: [{ type: "text", text: "Executed script: /script empty" }],
         metadata: {
           muxMetadata: {
             type: "script-execution",
-            id: "script-all",
+            id: "script-empty",
             historySequence: 0,
             timestamp: 123,
-            command: "/script all",
-            scriptName: "all.sh",
+            command: "/script empty",
+            scriptName: "empty.sh",
             args: [],
             result: scriptResult,
           },
@@ -78,10 +76,7 @@ describe("transformScriptMessagesForLLM", () => {
     const textPart = result[0].parts[0];
     expect(textPart.type).toBe("text");
     if (textPart.type === "text") {
-      expect(textPart.text).not.toContain("MUX_OUTPUT");
-      expect(textPart.text).not.toContain("User toast");
-      expect(textPart.text).not.toContain("MUX_PROMPT");
-      expect(textPart.text).not.toContain("Model prompt");
+      expect(textPart.text).toContain("Output: (no output)");
     }
   });
 
@@ -118,7 +113,7 @@ describe("transformScriptMessagesForLLM", () => {
     const textPart = result[0].parts[0];
     expect(textPart.type).toBe("text");
     if (textPart.type === "text") {
-      expect(textPart.text).toContain("Stdout/Stderr: (no output)");
+      expect(textPart.text).toContain("Output: (no output)");
       expect(textPart.text).toContain("Error:");
       expect(textPart.text).toContain("Permission denied");
     }

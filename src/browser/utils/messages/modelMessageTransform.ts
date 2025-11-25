@@ -204,8 +204,7 @@ export function injectModeTransition(
  * Logic:
  * - Identifies messages with metadata.muxMetadata.type === "script-execution"
  * - Replaces them with a simple user text message
- * - Content format: "Script '<name>' executed (exit code <N>).\nStdout/Stderr:\n<output>"
- * - Explicitly EXCLUDES the full MUX_OUTPUT and MUX_PROMPT content to save tokens
+ * - Content format: "Script '<name>' executed (exit code <N>).\nOutput:\n<output>"
  * - Preserves the rest of the message structure (id, role, other metadata)
  */
 export function transformScriptMessagesForLLM(messages: MuxMessage[]): MuxMessage[] {
@@ -227,24 +226,20 @@ export function transformScriptMessagesForLLM(messages: MuxMessage[]): MuxMessag
 
     let llmContent = `Script '${scriptMeta.scriptName}' executed (exit code ${result.exitCode}).`;
 
-    // Include Stdout/Stderr if present
+    // Include output if present (this is stdout which is agent-visible)
     if (result.output) {
-      llmContent += `\nStdout/Stderr:\n${result.output}`;
+      llmContent += `\nOutput:\n${result.output}`;
     } else {
-      llmContent += `\nStdout/Stderr: (no output)`;
+      llmContent += `\nOutput: (no output)`;
     }
 
-    // Surface script errors for Codex/LLM reviewers even when no output exists.
+    // Surface script errors for LLM reviewers even when no output exists.
     if ("error" in result) {
       const trimmedError = result.error.trim();
       if (trimmedError.length > 0) {
         llmContent += `\nError:\n${trimmedError}`;
       }
     }
-
-    // EXCLUDE MUX_OUTPUT and MUX_PROMPT from the LLM context for the script message itself.
-    // MUX_PROMPT is sent as a separate user message by ChatInput, so including it here would be duplication.
-    // MUX_OUTPUT is intended for user toasts, not LLM context.
 
     return [
       {
