@@ -50,13 +50,14 @@ function getTestInitStateManager(): InitStateManager {
  */
 export function createTestToolConfig(
   tempDir: string,
-  options?: { niceness?: number }
+  options?: { niceness?: number; workspaceId?: string }
 ): ToolConfiguration {
   return {
     cwd: tempDir,
     runtime: new LocalRuntime(tempDir),
     runtimeTempDir: tempDir,
     niceness: options?.niceness,
+    workspaceId: options?.workspaceId ?? "test-workspace",
   };
 }
 

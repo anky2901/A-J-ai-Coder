@@ -38,6 +38,8 @@ import { DisposableTempDir } from "@/node/services/tempDir";
 import { InitStateManager } from "@/node/services/initStateManager";
 import { createRuntime } from "@/node/runtime/runtimeFactory";
 import type { RuntimeConfig } from "@/common/types/runtime";
+import { BackgroundProcessManager } from "@/node/services/backgroundProcessManager";
+import { BashExecutionService } from "@/node/services/bashExecutionService";
 import { isSSHRuntime } from "@/common/types/runtime";
 import { validateProjectPath } from "@/node/utils/pathUtils";
 import { PTYService } from "@/node/services/ptyService";
@@ -66,6 +68,7 @@ export class IpcMain {
   private readonly initStateManager: InitStateManager;
   private readonly extensionMetadata: ExtensionMetadataService;
   private readonly ptyService: PTYService;
+  private readonly backgroundProcessManager: BackgroundProcessManager;
   private terminalWindowManager?: TerminalWindowManager;
   private readonly sessions = new Map<string, AgentSession>();
   private projectDirectoryPicker?: (event: IpcMainInvokeEvent) => Promise<string | null>;
@@ -86,11 +89,14 @@ export class IpcMain {
     this.extensionMetadata = new ExtensionMetadataService(
       path.join(config.rootDir, "extensionMetadata.json")
     );
+    this.backgroundProcessManager = new BackgroundProcessManager(new BashExecutionService());
+
     this.aiService = new AIService(
       config,
       this.historyService,
       this.partialService,
-      this.initStateManager
+      this.initStateManager,
+      this.backgroundProcessManager
     );
     // Terminal services - PTYService is cross-platform
     this.ptyService = new PTYService();
@@ -1305,6 +1311,7 @@ export class IpcMain {
             niceness: options?.niceness,
             runtimeTempDir: tempDir.path,
             overflow_policy: "truncate",
+            workspaceId,
           });
 
           // Execute the script with provided options
@@ -1407,6 +1414,9 @@ export class IpcMain {
       const runtime = createRuntime(
         metadata.runtimeConfig ?? { type: "local", srcBaseDir: this.config.srcDir }
       );
+
+      // Clean up background processes before deleting workspace
+      await this.backgroundProcessManager.cleanup(workspaceId);
 
       // Delegate deletion to runtime - it handles all path computation, existence checks, and pruning
       const deleteResult = await runtime.deleteWorkspace(projectPath, metadata.name, options.force);

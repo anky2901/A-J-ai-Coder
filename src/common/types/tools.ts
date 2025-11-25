@@ -7,6 +7,7 @@
 export interface BashToolArgs {
   script: string;
   timeout_secs?: number; // Optional: defaults to 3 seconds for interactivity
+  run_in_background?: boolean; // Run without blocking (for long-running processes)
 }
 
 interface CommonBashFields {
@@ -25,6 +26,12 @@ export type BashToolResult =
         reason: string;
         totalLines: number;
       };
+    })
+  | (CommonBashFields & {
+      success: true;
+      output: string;
+      exitCode: 0;
+      backgroundProcessId: string; // Background spawn succeeded
     })
   | (CommonBashFields & {
       success: false;
@@ -189,6 +196,56 @@ export interface StatusSetToolArgs {
   message: string;
   url?: string;
 }
+
+// Bash Background Tool Types
+export interface BashBackgroundReadArgs {
+  process_id: string;
+  stdout_tail?: number; // Last N lines of stdout
+  stderr_tail?: number; // Last N lines of stderr
+  stdout_regex?: string; // Filter stdout by regex
+  stderr_regex?: string; // Filter stderr by regex
+}
+
+export type BashBackgroundReadResult =
+  | {
+      success: true;
+      process_id: string;
+      status: "running" | "exited" | "killed" | "failed";
+      script: string;
+      pid?: number; // OS process ID
+      uptime_ms: number;
+      exitCode?: number;
+      stdout: string[];
+      stderr: string[];
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export interface BashBackgroundTerminateArgs {
+  process_id: string;
+}
+
+export type BashBackgroundTerminateResult =
+  | { success: true; message: string }
+  | { success: false; error: string };
+
+// Bash Background List Tool Types
+export type BashBackgroundListArgs = Record<string, never>;
+
+export interface BashBackgroundListProcess {
+  process_id: string;
+  status: "running" | "exited" | "killed" | "failed";
+  script: string;
+  pid?: number;
+  uptime_ms: number;
+  exitCode?: number;
+}
+
+export type BashBackgroundListResult =
+  | { success: true; processes: BashBackgroundListProcess[] }
+  | { success: false; error: string };
 
 export type StatusSetToolResult =
   | {

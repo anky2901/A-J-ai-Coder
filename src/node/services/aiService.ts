@@ -20,6 +20,7 @@ import { getToolsForModel } from "@/common/utils/tools/tools";
 import { createRuntime } from "@/node/runtime/runtimeFactory";
 import { secretsToRecord } from "@/common/types/secrets";
 import type { MuxProviderOptions } from "@/common/types/providerOptions";
+import type { BackgroundProcessManager } from "@/node/services/backgroundProcessManager";
 import { log } from "./log";
 import {
   transformModelMessages,
@@ -141,12 +142,14 @@ export class AIService extends EventEmitter {
   private readonly initStateManager: InitStateManager;
   private readonly mockModeEnabled: boolean;
   private readonly mockScenarioPlayer?: MockScenarioPlayer;
+  private readonly backgroundProcessManager?: BackgroundProcessManager;
 
   constructor(
     config: Config,
     historyService: HistoryService,
     partialService: PartialService,
-    initStateManager: InitStateManager
+    initStateManager: InitStateManager,
+    backgroundProcessManager?: BackgroundProcessManager
   ) {
     super();
     // Increase max listeners to accommodate multiple concurrent workspace listeners
@@ -156,6 +159,7 @@ export class AIService extends EventEmitter {
     this.historyService = historyService;
     this.partialService = partialService;
     this.initStateManager = initStateManager;
+    this.backgroundProcessManager = backgroundProcessManager;
     this.streamManager = new StreamManager(historyService, partialService);
     void this.ensureSessionsDir();
     this.setupStreamEventForwarding();
@@ -762,6 +766,8 @@ export class AIService extends EventEmitter {
           runtime,
           secrets: secretsToRecord(projectSecrets),
           runtimeTempDir,
+          backgroundProcessManager: this.backgroundProcessManager,
+          workspaceId,
         },
         workspaceId,
         this.initStateManager,
