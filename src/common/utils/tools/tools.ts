@@ -107,16 +107,13 @@ export async function getToolsForModel(
     // and line number miscalculations. Use file_edit_replace_string instead.
     // file_edit_replace_lines: wrap(createFileEditReplaceLinesTool(config)),
     bash: wrap(createBashTool(config)),
+    // TODO: These aren't supported by the SSH runtime yet, but they will be,
+    // so always add them.
+    bash_background_read: wrap(createBashBackgroundReadTool(config)),
+    bash_background_list: wrap(createBashBackgroundListTool(config)),
+    bash_background_terminate: wrap(createBashBackgroundTerminateTool(config)),
     web_fetch: wrap(createWebFetchTool(config)),
   };
-
-  // Only include background tools when manager is available
-  // (not available in CLI/debug paths)
-  if (config.backgroundProcessManager) {
-    runtimeTools.bash_background_read = wrap(createBashBackgroundReadTool(config));
-    runtimeTools.bash_background_list = wrap(createBashBackgroundListTool(config));
-    runtimeTools.bash_background_terminate = wrap(createBashBackgroundTerminateTool(config));
-  }
 
   // Non-runtime tools execute immediately (no init wait needed)
   const nonRuntimeTools: Record<string, Tool> = {

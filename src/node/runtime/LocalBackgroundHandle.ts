@@ -76,7 +76,10 @@ export class LocalBackgroundHandle implements BackgroundHandle {
   }
 
   isRunning(): Promise<boolean> {
-    return Promise.resolve(this.disposable.underlying.exitCode === null);
+    const child = this.disposable.underlying;
+    // Process is dead if either exitCode or signalCode is set
+    // (signal-killed processes have signalCode set but exitCode remains null)
+    return Promise.resolve(child.exitCode === null && child.signalCode === null);
   }
 
   async terminate(): Promise<void> {
