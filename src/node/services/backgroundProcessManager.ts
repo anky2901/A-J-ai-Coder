@@ -194,4 +194,16 @@ export class BackgroundProcessManager {
 
     log.debug(`Cleaned up ${matching.length} process(es) for workspace ${workspaceId}`);
   }
+
+  /**
+   * Terminate all background processes across all workspaces.
+   * Called on app shutdown to prevent orphaned processes.
+   */
+  async terminateAll(): Promise<void> {
+    log.debug(`BackgroundProcessManager.terminateAll() called`);
+    const allProcesses = Array.from(this.processes.values());
+    await Promise.all(allProcesses.map((p) => this.terminate(p.id)));
+    this.processes.clear();
+    log.debug(`Terminated ${allProcesses.length} background process(es)`);
+  }
 }

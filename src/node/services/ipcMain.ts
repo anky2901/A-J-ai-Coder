@@ -113,6 +113,13 @@ export class IpcMain {
   }
 
   /**
+   * Terminate all background processes. Called on app shutdown.
+   */
+  async terminateAllBackgroundProcesses(): Promise<void> {
+    await this.backgroundProcessManager.terminateAll();
+  }
+
+  /**
    * Configure a picker used to select project directories (desktop mode only).
    * Server mode does not provide a native directory picker.
    */

@@ -540,6 +540,18 @@ if (gotTheLock) {
     }
   });
 
+  // Track if we're already quitting to avoid re-entrancy
+  let isQuitting = false;
+  app.on("before-quit", (event) => {
+    if (ipcMain && !isQuitting) {
+      isQuitting = true;
+      event.preventDefault();
+      ipcMain.terminateAllBackgroundProcesses().finally(() => {
+        app.exit(0);
+      });
+    }
+  });
+
   app.on("activate", () => {
     // Only create window if app is ready and no window exists
     // This prevents "Cannot create BrowserWindow before app is ready" error
