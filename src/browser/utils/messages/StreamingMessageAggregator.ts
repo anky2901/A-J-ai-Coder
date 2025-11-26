@@ -387,16 +387,17 @@ export class StreamingMessageAggregator {
   }
 
   handleStreamDelta(data: StreamDeltaEvent): void {
-    const message = this.messages.get(data.messageId);
-    if (!message) return;
-
     // Handle soft interrupt signal from backend
+    // Do this BEFORE message check to ensure interrupt state is captured even if message lookup fails
     if (data.softInterruptPending !== undefined) {
       const context = this.activeStreams.get(data.messageId);
       if (context) {
         context.softInterruptPending = data.softInterruptPending;
       }
     }
+
+    const message = this.messages.get(data.messageId);
+    if (!message) return;
 
     // Skip appending if this is an empty delta (e.g., just signaling interrupt)
     if (data.delta) {
