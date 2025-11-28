@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import type { APIClient } from "@/browser/contexts/API";
 
 export type VoiceInputState = "idle" | "recording" | "transcribing";
 
@@ -16,6 +17,8 @@ export interface UseVoiceInputOptions {
   /** Called after successful transcription if stop({ send: true }) was used */
   onSend?: () => void;
   openAIKeySet: boolean;
+  /** oRPC API client for voice transcription */
+  api?: APIClient | null;
 }
 
 export interface UseVoiceInputResult {
@@ -90,7 +93,13 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         new Uint8Array(buffer).reduce((str, byte) => str + String.fromCharCode(byte), "")
       );
 
-      const result = await window.api.voice.transcribe(base64);
+      const api = callbacksRef.current.api;
+      if (!api) {
+        callbacksRef.current.onError?.("Voice API not available");
+        return;
+      }
+
+      const result = await api.voice.transcribe({ audioBase64: base64 });
 
       if (!result.success) {
         callbacksRef.current.onError?.(result.error);
