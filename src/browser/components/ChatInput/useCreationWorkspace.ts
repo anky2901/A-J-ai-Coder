@@ -6,7 +6,7 @@ import type { ThinkingLevel } from "@/common/types/thinking";
 import { parseRuntimeString } from "@/browser/utils/chatCommands";
 import { useDraftWorkspaceSettings } from "@/browser/hooks/useDraftWorkspaceSettings";
 import { readPersistedState, updatePersistedState } from "@/browser/hooks/usePersistedState";
-import { useSendMessageOptions } from "@/browser/hooks/useSendMessageOptions";
+import { getSendOptionsFromStorage } from "@/browser/utils/messages/sendOptions";
 import {
   getInputKey,
   getModeKey,
@@ -72,8 +72,8 @@ export function useCreationWorkspace({
   const { settings, setRuntimeOptions, setTrunkBranch, getRuntimeString } =
     useDraftWorkspaceSettings(projectPath, branches, recommendedTrunk);
 
-  // Get send options from shared hook (uses project-scoped storage key)
-  const sendMessageOptions = useSendMessageOptions(getProjectScopeId(projectPath));
+  // Project scope ID for reading send options at send time
+  const projectScopeId = getProjectScopeId(projectPath);
 
   // Load branches on mount
   useEffect(() => {
@@ -107,6 +107,11 @@ export function useCreationWorkspace({
         const runtimeConfig: RuntimeConfig | undefined = runtimeString
           ? parseRuntimeString(runtimeString, "")
           : undefined;
+
+        // Read send options fresh from localStorage at send time to avoid
+        // race conditions with React state updates (requestAnimationFrame batching
+        // in usePersistedState can delay state updates after model selection)
+        const sendMessageOptions = getSendOptionsFromStorage(projectScopeId);
 
         // Send message with runtime config and creation-specific params
         const result = await window.api.workspace.sendMessage(null, message, {
@@ -158,9 +163,9 @@ export function useCreationWorkspace({
     [
       isSending,
       projectPath,
+      projectScopeId,
       onWorkspaceCreated,
       getRuntimeString,
-      sendMessageOptions,
       settings.trunkBranch,
     ]
   );
