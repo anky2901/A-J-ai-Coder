@@ -27,6 +27,7 @@ import {
   sendMessageAndWait,
   extractTextFromEvents,
   writeFileViaBash,
+  configureTestRetries,
   HAIKU_MODEL,
   TEST_TIMEOUT_LOCAL_MS,
   TEST_TIMEOUT_SSH_MS,
@@ -64,6 +65,9 @@ let sshConfig: SSHServerConfig | undefined;
 // ============================================================================
 
 describeIntegration("Runtime File Editing Tools", () => {
+  // LLM-based tests can be flaky due to model non-determinism; retry on CI
+  configureTestRetries(3);
+
   beforeAll(async () => {
     // Check if Docker is available (required for SSH tests)
     if (!(await isDockerAvailable())) {
