@@ -1905,6 +1905,18 @@ export class IpcMain {
       }
     });
 
+    // Subscribe to terminal output (flushes buffered output)
+    // In browser mode, output is buffered until the client subscribes to avoid
+    // losing initial output (like the shell prompt) during the HTTP round-trip.
+    ipcMain.handle(IPC_CHANNELS.TERMINAL_SUBSCRIBE, (_event, sessionId: string) => {
+      try {
+        this.ptyService.subscribeOutput(sessionId);
+      } catch (err) {
+        log.error("Error subscribing to terminal:", err);
+        throw err;
+      }
+    });
+
     ipcMain.handle(IPC_CHANNELS.TERMINAL_WINDOW_OPEN, async (_event, workspaceId: string) => {
       console.log(`[BACKEND] TERMINAL_WINDOW_OPEN handler called with: ${workspaceId}`);
       try {

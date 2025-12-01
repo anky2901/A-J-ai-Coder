@@ -193,6 +193,8 @@ const api: IPCApi = {
       const channel = `terminal:output:${sessionId}`;
       const handler = (_event: unknown, data: string) => callback(data);
       ipcRenderer.on(channel, handler);
+      // Tell server we're ready to receive output - flushes any buffered output
+      void ipcRenderer.invoke(IPC_CHANNELS.TERMINAL_SUBSCRIBE, sessionId);
       return () => ipcRenderer.removeListener(channel, handler);
     },
     onExit: (sessionId: string, callback: (exitCode: number) => void) => {

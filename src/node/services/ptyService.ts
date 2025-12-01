@@ -27,6 +27,10 @@ interface SessionData {
   runtime: Runtime;
   onData: (data: string) => void;
   onExit: (exitCode: number) => void;
+  /** Buffer for output received before client subscribes */
+  outputBuffer: string[];
+  /** Whether the client has subscribed to receive output */
+  clientSubscribed: boolean;
 }
 
 /**
@@ -161,37 +165,55 @@ export class PTYService {
         );
       }
 
+      // Create session data with buffer for pre-subscription output
+      const sessionData: SessionData = {
+        pty: ptyProcess,
+        workspaceId: params.workspaceId,
+        workspacePath,
+        runtime,
+        onData,
+        onExit,
+        outputBuffer: [],
+        clientSubscribed: false,
+      };
+      this.sessions.set(sessionId, sessionData);
+
       // Forward PTY data via callback
       // Buffer to handle escape sequences split across chunks
-      let buffer = "";
+      let escapeBuffer = "";
 
       ptyProcess.onData((data) => {
-        // Append new data to buffer
-        buffer += data;
+        // Append new data to escape sequence buffer
+        escapeBuffer += data;
 
         // Check if buffer ends with an incomplete escape sequence
         // Look for ESC at the end without its complete sequence
-        let sendUpTo = buffer.length;
+        let sendUpTo = escapeBuffer.length;
 
         // If buffer ends with ESC or ESC[, hold it back for next chunk
-        if (buffer.endsWith("\x1b")) {
-          sendUpTo = buffer.length - 1;
-        } else if (buffer.endsWith("\x1b[")) {
-          sendUpTo = buffer.length - 2;
+        if (escapeBuffer.endsWith("\x1b")) {
+          sendUpTo = escapeBuffer.length - 1;
+        } else if (escapeBuffer.endsWith("\x1b[")) {
+          sendUpTo = escapeBuffer.length - 2;
         } else {
           // Check if it ends with ESC[ followed by incomplete CSI sequence
           // eslint-disable-next-line no-control-regex, @typescript-eslint/prefer-regexp-exec
-          const match = buffer.match(/\x1b\[[0-9;]*$/);
+          const match = escapeBuffer.match(/\x1b\[[0-9;]*$/);
           if (match) {
-            sendUpTo = buffer.length - match[0].length;
+            sendUpTo = escapeBuffer.length - match[0].length;
           }
         }
 
         // Send complete data
         if (sendUpTo > 0) {
-          const toSend = buffer.substring(0, sendUpTo);
-          onData(toSend);
-          buffer = buffer.substring(sendUpTo);
+          const toSend = escapeBuffer.substring(0, sendUpTo);
+          // Buffer output until client subscribes (fixes race in browser mode)
+          if (sessionData.clientSubscribed) {
+            onData(toSend);
+          } else {
+            sessionData.outputBuffer.push(toSend);
+          }
+          escapeBuffer = escapeBuffer.substring(sendUpTo);
         }
       });
 
@@ -200,15 +222,6 @@ export class PTYService {
         log.info(`Terminal session ${sessionId} exited with code ${exitCode}`);
         this.sessions.delete(sessionId);
         onExit(exitCode);
-      });
-
-      this.sessions.set(sessionId, {
-        pty: ptyProcess,
-        workspaceId: params.workspaceId,
-        workspacePath,
-        runtime,
-        onData,
-        onExit,
       });
     } else if (runtime instanceof SSHRuntime) {
       // SSH: Use node-pty to spawn SSH with local PTY (enables resize support)
@@ -263,29 +276,47 @@ export class PTYService {
         );
       }
 
+      // Create session data with buffer for pre-subscription output
+      const sessionData: SessionData = {
+        pty: ptyProcess,
+        workspaceId: params.workspaceId,
+        workspacePath,
+        runtime,
+        onData,
+        onExit,
+        outputBuffer: [],
+        clientSubscribed: false,
+      };
+      this.sessions.set(sessionId, sessionData);
+
       // Handle data (same as local - buffer incomplete escape sequences)
-      let buffer = "";
+      let escapeBuffer = "";
       ptyProcess.onData((data) => {
-        buffer += data;
-        let sendUpTo = buffer.length;
+        escapeBuffer += data;
+        let sendUpTo = escapeBuffer.length;
 
         // Hold back incomplete escape sequences
-        if (buffer.endsWith("\x1b")) {
-          sendUpTo = buffer.length - 1;
-        } else if (buffer.endsWith("\x1b[")) {
-          sendUpTo = buffer.length - 2;
+        if (escapeBuffer.endsWith("\x1b")) {
+          sendUpTo = escapeBuffer.length - 1;
+        } else if (escapeBuffer.endsWith("\x1b[")) {
+          sendUpTo = escapeBuffer.length - 2;
         } else {
           // eslint-disable-next-line no-control-regex, @typescript-eslint/prefer-regexp-exec
-          const match = buffer.match(/\x1b\[[0-9;]*$/);
+          const match = escapeBuffer.match(/\x1b\[[0-9;]*$/);
           if (match) {
-            sendUpTo = buffer.length - match[0].length;
+            sendUpTo = escapeBuffer.length - match[0].length;
           }
         }
 
         if (sendUpTo > 0) {
-          const toSend = buffer.substring(0, sendUpTo);
-          onData(toSend);
-          buffer = buffer.substring(sendUpTo);
+          const toSend = escapeBuffer.substring(0, sendUpTo);
+          // Buffer output until client subscribes (fixes race in browser mode)
+          if (sessionData.clientSubscribed) {
+            onData(toSend);
+          } else {
+            sessionData.outputBuffer.push(toSend);
+          }
+          escapeBuffer = escapeBuffer.substring(sendUpTo);
         }
       });
 
@@ -294,16 +325,6 @@ export class PTYService {
         log.info(`SSH terminal session ${sessionId} exited with code ${exitCode}`);
         this.sessions.delete(sessionId);
         onExit(exitCode);
-      });
-
-      // Store PTY (same interface as local)
-      this.sessions.set(sessionId, {
-        pty: ptyProcess,
-        workspaceId: params.workspaceId,
-        workspacePath,
-        runtime,
-        onData,
-        onExit,
       });
     } else {
       throw new Error(`Unsupported runtime type: ${runtime.constructor.name}`);
@@ -315,6 +336,34 @@ export class PTYService {
       cols: params.cols,
       rows: params.rows,
     };
+  }
+
+  /**
+   * Subscribe to terminal output (flushes buffered output and starts streaming).
+   * In browser mode, output is buffered until the client subscribes to avoid
+   * losing initial output (like the shell prompt) during the HTTP round-trip.
+   */
+  subscribeOutput(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      log.info(`Cannot subscribe to session ${sessionId}: not found`);
+      return;
+    }
+
+    if (session.clientSubscribed) {
+      log.debug(`Session ${sessionId} already subscribed`);
+      return;
+    }
+
+    // Mark as subscribed and flush buffered output
+    session.clientSubscribed = true;
+    if (session.outputBuffer.length > 0) {
+      log.debug(`Flushing ${session.outputBuffer.length} buffered chunks for ${sessionId}`);
+      for (const chunk of session.outputBuffer) {
+        session.onData(chunk);
+      }
+      session.outputBuffer = [];
+    }
   }
 
   /**

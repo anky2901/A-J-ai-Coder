@@ -343,7 +343,11 @@ const webApi: IPCApi = {
     onOutput: (sessionId: string, callback: (data: string) => void) => {
       // Subscribe to terminal output events via WebSocket
       const channel = `terminal:output:${sessionId}`;
-      return wsManager.on(channel, callback as (data: unknown) => void);
+      const unsubscribe = wsManager.on(channel, callback as (data: unknown) => void);
+      // Tell server we're ready to receive output - this flushes any buffered output
+      // that arrived before we registered our handler (fixes first prompt issue)
+      void invokeIPC(IPC_CHANNELS.TERMINAL_SUBSCRIBE, sessionId);
+      return unsubscribe;
     },
     onExit: (sessionId: string, callback: (exitCode: number) => void) => {
       // Subscribe to terminal exit events via WebSocket
