@@ -1,10 +1,10 @@
-import { generateObject } from "ai";
+import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
-import type { AIService } from "./aiService";
 import { log } from "./log";
 import type { Result } from "@/common/types/result";
 import { Ok, Err } from "@/common/types/result";
 import type { SendMessageError } from "@/common/types/errors";
+import { buildProviderOptions } from "@/common/utils/ai/providerOptions";
 
 const workspaceNameSchema = z.object({
   name: z
@@ -15,15 +15,22 @@ const workspaceNameSchema = z.object({
     .describe("Git-safe branch/workspace name: lowercase, hyphens only"),
 });
 
+/** Minimal interface for model creation - allows testing without full AIService */
+interface ModelProvider {
+  createModel(modelString: string): Promise<Result<LanguageModel, SendMessageError>>;
+}
+
 /**
  * Generate workspace name using AI.
  * If AI cannot be used (e.g. missing credentials, unsupported provider, invalid model),
  * returns a SendMessageError so callers can surface the standard provider error UX.
+ *
+ * Explicitly disables extended thinking to ensure clean JSON responses.
  */
 export async function generateWorkspaceName(
   message: string,
   modelString: string,
-  aiService: AIService
+  aiService: ModelProvider
 ): Promise<Result<string, SendMessageError>> {
   try {
     const modelResult = await aiService.createModel(modelString);
@@ -31,10 +38,17 @@ export async function generateWorkspaceName(
       return Err(modelResult.error);
     }
 
+    // Explicitly disable extended thinking for workspace name generation.
+    // Reasoning models sometimes return thinking content that breaks JSON parsing.
+    const providerOptions = buildProviderOptions(modelString, "off");
+
     const result = await generateObject({
       model: modelResult.data,
       schema: workspaceNameSchema,
       prompt: `Generate a git-safe branch/workspace name for this development task:\n\n"${message}"\n\nRequirements:\n- Git-safe identifier (e.g., "automatic-title-generation")\n- Lowercase, hyphens only, no spaces\n- Concise (2-5 words) and descriptive of the task`,
+      // Cast needed: our ProviderOptions type is stricter than AI SDK's generic type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+      providerOptions: providerOptions as any,
     });
 
     return Ok(validateBranchName(result.object.name));
