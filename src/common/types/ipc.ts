@@ -375,6 +375,10 @@ export interface IPCApi {
     /** Transcribe audio using OpenAI Whisper. Audio should be base64-encoded webm/opus. */
     transcribe(audioBase64: string): Promise<Result<string, string>>;
   };
+  ssh: {
+    /** Get list of hosts from user's SSH config file */
+    getConfigHosts(): Promise<string[]>;
+  };
   update: {
     check(): Promise<void>;
     download(): Promise<void>;

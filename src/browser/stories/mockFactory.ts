@@ -459,6 +459,9 @@ export function createMockAPI(options: MockAPIOptions): IPCApi {
     voice: {
       transcribe: () => Promise.resolve({ success: false, error: "Not implemented in mock" }),
     },
+    ssh: {
+      getConfigHosts: () => Promise.resolve(["dev-server", "prod-server", "staging"]),
+    },
     update: {
       check: () => Promise.resolve(undefined),
       download: () => Promise.resolve(undefined),

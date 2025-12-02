@@ -364,6 +364,9 @@ const webApi: IPCApi = {
   voice: {
     transcribe: (audioBase64) => invokeIPC(IPC_CHANNELS.VOICE_TRANSCRIBE, audioBase64),
   },
+  ssh: {
+    getConfigHosts: () => invokeIPC(IPC_CHANNELS.SSH_CONFIG_HOSTS),
+  },
   update: {
     check: () => invokeIPC(IPC_CHANNELS.UPDATE_CHECK),
     download: () => invokeIPC(IPC_CHANNELS.UPDATE_DOWNLOAD),

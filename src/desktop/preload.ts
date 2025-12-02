@@ -164,6 +164,9 @@ const api: IPCApi = {
     transcribe: (audioBase64: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioBase64),
   },
+  ssh: {
+    getConfigHosts: () => ipcRenderer.invoke(IPC_CHANNELS.SSH_CONFIG_HOSTS),
+  },
   update: {
     check: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_CHECK),
     download: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_DOWNLOAD),

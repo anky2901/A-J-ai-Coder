@@ -1896,6 +1896,48 @@ export class IpcMain {
         }
       }
     );
+
+    // SSH config hosts handler
+    ipcMain.handle(IPC_CHANNELS.SSH_CONFIG_HOSTS, async () => {
+      try {
+        return await this.parseSSHConfigHosts();
+      } catch (error) {
+        log.error("Failed to parse SSH config hosts:", error);
+        return [];
+      }
+    });
+  }
+
+  /**
+   * Parse SSH config file and extract host definitions.
+   * Returns list of configured hosts sorted alphabetically.
+   */
+  private async parseSSHConfigHosts(): Promise<string[]> {
+    const sshConfigPath = path.join(process.env.HOME ?? "", ".ssh", "config");
+    try {
+      const content = await fsPromises.readFile(sshConfigPath, "utf-8");
+      const hosts = new Set<string>();
+
+      // Parse Host directives - each can have multiple patterns separated by whitespace
+      // Skip wildcards (*) and negation patterns (!)
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed.toLowerCase().startsWith("host ")) {
+          const patterns = trimmed.slice(5).trim().split(/\s+/);
+          for (const pattern of patterns) {
+            // Skip wildcards and negation patterns
+            if (!pattern.includes("*") && !pattern.includes("?") && !pattern.startsWith("!")) {
+              hosts.add(pattern);
+            }
+          }
+        }
+      }
+
+      return Array.from(hosts).sort((a, b) => a.localeCompare(b));
+    } catch {
+      // File doesn't exist or can't be read - return empty list
+      return [];
+    }
   }
 
   private registerTerminalHandlers(ipcMain: ElectronIpcMain, mainWindow: BrowserWindow): void {

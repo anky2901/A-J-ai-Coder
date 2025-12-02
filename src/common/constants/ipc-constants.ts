@@ -71,6 +71,9 @@ export const IPC_CHANNELS = {
   // Voice channels
   VOICE_TRANSCRIBE: "voice:transcribe",
 
+  // SSH channels
+  SSH_CONFIG_HOSTS: "ssh:configHosts",
+
   // Dynamic channel prefixes
   WORKSPACE_CHAT_PREFIX: "workspace:chat:",
   WORKSPACE_METADATA: "workspace:metadata",
