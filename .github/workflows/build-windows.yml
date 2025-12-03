@@ -1,4 +1,4 @@
-name: Build Windows Executable
+name: Build A J AI Coder - Windows Electron
 
 on:
   push:
@@ -8,42 +8,79 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    
+  build-windows:
+    runs-on: windows-latest
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
     - name: Setup Bun
       uses: oven-sh/setup-bun@v1
       with:
         bun-version: latest
-        
+
     - name: Install dependencies
       run: bun install
-      
-    - name: Build application
+
+    - name: Build web assets
       run: bun run build
-      
-    - name: Package for Windows
-      run: |
-        mkdir -p dist-windows
-        cp -r dist/* dist-windows/
-        
-    - name: Upload Windows Build
+      shell: bash
+
+    - name: Install Electron Builder
+      run: npm install -g electron-builder
+
+    - name: Build Windows Electron app
+      run: electron-builder --windows --x64
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Windows executable
       uses: actions/upload-artifact@v4
       with:
-        name: A-J-AI-Coder-Windows
-        path: dist-windows/
+        name: A-J-AI-Coder-Windows-x64
+        path: |
+          dist/*.exe
+          dist/*.msi
+        if-no-files-found: warn
         retention-days: 30
-        
-    - name: Create Release (if tagged)
-      if: startsWith(github.ref, 'refs/tags/')
+
+    - name: Create Release (if main branch)
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       uses: softprops/action-gh-release@v1
       with:
-        files: dist-windows/**/*
+        tag_name: v1.0.0-build-${{ github.run_number }}
+        name: A J AI Coder v1.0.0 Build ${{ github.run_number }}
+        body: |
+          🚀 **A J AI Coder - Professional Windows IDE**
+          
+          **Developer:** Ajay Sharma (@anky2901)
+          **Contact:** ajaysharma29014117@gmail.com
+          **Development Phase:** July 26, 2025 - December 3, 2025
+          **Final Build:** December 3, 2025
+          
+          ### Download:
+          - **Windows Installer:** `A-J-AI-Coder-Setup-1.0.0.exe`
+          
+          ### Features:
+          ✅ Live Preview Panel (0-2ms latency)
+          ✅ Multi-model AI support (Anthropic, OpenAI, Groq, Ollama)
+          ✅ Workspace isolation
+          ✅ Git integration
+          ✅ Plan/Execute modes
+          ✅ Context-aware coding
+          ✅ Built with Electron for Windows
+          
+          Built with ❤️ by Ajay Sharma
         draft: false
         prerelease: false
+        files: |
+          dist/*.exe
+          dist/*.msi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
