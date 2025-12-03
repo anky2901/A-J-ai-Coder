@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { spawnSync } from "child_process";
 import { Config } from "../../../src/node/config";
 
 export interface DemoProjectConfig {
@@ -48,6 +49,10 @@ export function prepareDemoProject(
   fs.mkdirSync(projectPath, { recursive: true });
   fs.mkdirSync(workspacePath, { recursive: true });
   fs.mkdirSync(sessionsDir, { recursive: true });
+
+  // Initialize git repos so listBranches() doesn't error
+  spawnSync("git", ["init", "-q"], { cwd: projectPath });
+  spawnSync("git", ["init", "-q"], { cwd: workspacePath });
 
   // E2E tests use legacy workspace ID format to test backward compatibility.
   // Production code now uses generateStableId() for new workspaces.
