@@ -44,13 +44,15 @@ import type {
 } from "@/common/types/stream";
 import { applyToolPolicy, type ToolPolicy } from "@/common/utils/tools/toolPolicy";
 import { MockScenarioPlayer } from "./mock/mockScenarioPlayer";
-import { Agent } from "undici";
+import { EnvHttpProxyAgent } from "undici";
 
 // Export a standalone version of getToolsForModel for use in backend
 
 // Create undici agent with unlimited timeouts for AI streaming requests.
 // Safe because users control cancellation via AbortSignal from the UI.
-const unlimitedTimeoutAgent = new Agent({
+// Uses EnvHttpProxyAgent to automatically respect HTTP_PROXY, HTTPS_PROXY,
+// and NO_PROXY environment variables for debugging/corporate network support.
+const unlimitedTimeoutAgent = new EnvHttpProxyAgent({
   bodyTimeout: 0, // No timeout - prevents BodyTimeoutError on long reasoning pauses
   headersTimeout: 0, // No timeout for headers
 });
