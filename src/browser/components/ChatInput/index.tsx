@@ -67,7 +67,7 @@ import { useCreationWorkspace } from "./useCreationWorkspace";
 import { useTutorial } from "@/browser/contexts/TutorialContext";
 import { useVoiceInput } from "@/browser/hooks/useVoiceInput";
 import { VoiceInputButton } from "./VoiceInputButton";
-import { WaveformBars } from "./WaveformBars";
+import { RecordingOverlay } from "./RecordingOverlay";
 
 const LEADING_COMMAND_NOISE = /^(?:\s|\u200B|\u200C|\u200D|\u200E|\u200F|\uFEFF)+/;
 
@@ -1033,54 +1033,12 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           <div className="relative flex items-end" data-component="ChatInputControls">
             {/* Recording/transcribing overlay - replaces textarea when active */}
             {voiceInput.state !== "idle" ? (
-              <button
-                type="button"
-                onClick={voiceInput.state === "recording" ? voiceInput.toggle : undefined}
-                disabled={voiceInput.state === "transcribing"}
-                className={cn(
-                  "mb-1 flex min-h-[60px] w-full items-center justify-center gap-3 rounded-md border px-4 py-4 transition-all focus:outline-none",
-                  voiceInput.state === "recording"
-                    ? mode === "plan"
-                      ? "cursor-pointer border-plan-mode bg-plan-mode/10"
-                      : "cursor-pointer border-exec-mode bg-exec-mode/10"
-                    : "cursor-wait border-amber-500 bg-amber-500/10"
-                )}
-                aria-label={voiceInput.state === "recording" ? "Stop recording" : "Transcribing..."}
-              >
-                <WaveformBars
-                  colorClass={
-                    voiceInput.state === "recording"
-                      ? mode === "plan"
-                        ? "bg-plan-mode"
-                        : "bg-exec-mode"
-                      : "bg-amber-500"
-                  }
-                />
-                <span
-                  className={cn(
-                    "text-sm font-medium",
-                    voiceInput.state === "recording"
-                      ? mode === "plan"
-                        ? "text-plan-mode-light"
-                        : "text-exec-mode-light"
-                      : "text-amber-500"
-                  )}
-                >
-                  {voiceInput.state === "recording"
-                    ? `Recording... space to send, ${formatKeybind(KEYBINDS.TOGGLE_VOICE_INPUT)} to stop, esc to cancel`
-                    : "Transcribing..."}
-                </span>
-                <WaveformBars
-                  colorClass={
-                    voiceInput.state === "recording"
-                      ? mode === "plan"
-                        ? "bg-plan-mode"
-                        : "bg-exec-mode"
-                      : "bg-amber-500"
-                  }
-                  mirrored
-                />
-              </button>
+              <RecordingOverlay
+                state={voiceInput.state}
+                mode={mode}
+                mediaRecorder={voiceInput.mediaRecorder}
+                onStop={voiceInput.toggle}
+              />
             ) : (
               <>
                 <VimTextArea
