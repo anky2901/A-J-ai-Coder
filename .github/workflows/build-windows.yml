@@ -40,13 +40,21 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: List build output
+      run: |
+        echo "=== Checking release folder ==="
+        if (Test-Path "release") { Get-ChildItem "release" -Recurse } else { echo "No release folder" }
+        echo "=== Checking dist folder ==="
+        if (Test-Path "dist") { Get-ChildItem "dist" -Recurse | Select-Object -First 20 } else { echo "No dist folder" }
+
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
       with:
         name: A-J-AI-Coder-Windows-x64
         path: |
-          dist/*.exe
-          dist/*.msi
+          release/*.exe
+          release/*.msi
+          release/**/*.exe
         if-no-files-found: warn
         retention-days: 30
 
@@ -80,7 +88,7 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          dist/*.exe
-          dist/*.msi
+          release/*.exe
+          release/*.msi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
