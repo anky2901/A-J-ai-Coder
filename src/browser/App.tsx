@@ -6,6 +6,7 @@ import type { WorkspaceSelection } from "./components/ProjectSidebar";
 import { LeftSidebar } from "./components/LeftSidebar";
 import { ProjectCreateModal } from "./components/ProjectCreateModal";
 import { AIView } from "./components/AIView";
+import { LivePreviewPanel } from "./components/LivePreviewPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { usePersistedState, updatePersistedState } from "./hooks/usePersistedState";
 import { matchesKeybind, KEYBINDS } from "./utils/ui/keybinds";
@@ -545,21 +546,31 @@ function AppInner() {
                   currentMetadata?.name ??
                   selectedWorkspace.namedWorkspacePath?.split("/").pop() ??
                   selectedWorkspace.workspaceId;
-                return (
-                  <ErrorBoundary
-                    workspaceInfo={`${selectedWorkspace.projectName}/${workspaceName}`}
-                  >
-                    <AIView
-                      key={selectedWorkspace.workspaceId}
-                      workspaceId={selectedWorkspace.workspaceId}
-                      projectPath={selectedWorkspace.projectPath}
-                      projectName={selectedWorkspace.projectName}
-                      branch={workspaceName}
+                  return (
+                    <div className="flex h-full">
+                      <div className="flex-1 min-w-0">
+                        <ErrorBoundary
+                          workspaceInfo={`${selectedWorkspace.projectName}/${workspaceName}`}
+                        >
+                          <AIView
+                            key={selectedWorkspace.workspaceId}
+                            workspaceId={selectedWorkspace.workspaceId}
+                            projectPath={selectedWorkspace.projectPath}
+                            projectName={selectedWorkspace.projectName}
+                            branch={workspaceName}
                       namedWorkspacePath={selectedWorkspace.namedWorkspacePath ?? ""}
                       runtimeConfig={currentMetadata?.runtimeConfig}
                       incompatibleRuntime={currentMetadata?.incompatibleRuntime}
                     />
                   </ErrorBoundary>
+                      </div>
+                      <div className="w-[50%] min-w-0 border-l border-neutral-700">
+                        <LivePreviewPanel 
+                          workspaceId={selectedWorkspace.workspaceId} 
+                          projectPath={selectedWorkspace.projectPath} 
+                        />
+                      </div>
+                    </div>
                 );
               })()
             ) : creationProjectPath ? (
