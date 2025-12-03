@@ -627,7 +627,7 @@ function AppInner() {
                 }}
               >
                 <h2 style={{ fontSize: "clamp(24px, 5vw, 36px)", letterSpacing: "-1px" }}>
-                  Welcome to Mux
+                  Welcome to A J AI Coder
                 </h2>
                 <p>Select a workspace from the sidebar or add a new one to get started.</p>
               </div>

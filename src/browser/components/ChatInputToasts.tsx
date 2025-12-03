@@ -204,7 +204,7 @@ export const createErrorToast = (error: SendMessageErrorType): Toast => {
         solution: (
           <>
             <SolutionLabel>Solution:</SolutionLabel>
-            Upgrade mux to use this workspace, or delete it and create a new one.
+            Upgrade A J AI Coder to use this workspace, or delete it and create a new one.
           </>
         ),
       };

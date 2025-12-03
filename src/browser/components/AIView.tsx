@@ -646,7 +646,7 @@ const IncompatibleWorkspaceView: React.FC<{ message: string; className?: string 
       </h2>
       <p className="mb-4 text-[var(--color-text-secondary)]">{message}</p>
       <p className="text-sm text-[var(--color-text-tertiary)]">
-        You can delete this workspace and create a new one, or upgrade mux to use it.
+        You can delete this workspace and create a new one, or upgrade A J AI Coder to use it.
       </p>
     </div>
   </div>
