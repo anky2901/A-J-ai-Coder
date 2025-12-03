@@ -1,19 +1,35 @@
 <div align="center">
 
-<img src="docs/img/logo.webp" alt="mux logo" width="15%" />
+<img src="docs/img/logo.webp" alt="A J AI Coder logo" width="15%" />
 
-# mux - coding agent multiplexer
+# A J AI Coder - Professional AI-Powered IDE
 
-[![CI](https://github.com/coder/mux/actions/workflows/ci.yml/badge.svg)](https://github.com/coder/mux/actions/workflows/ci.yml)
-[![Build](https://github.com/coder/mux/actions/workflows/build.yml/badge.svg?event=merge_group)](https://github.com/coder/mux/actions/workflows/build.yml?query=event:merge_group)
-[![Download](https://img.shields.io/badge/Download-Releases-purple)](https://github.com/coder/mux/releases)
+[![GitHub](https://img.shields.io/badge/GitHub-anky2901-blue)](https://github.com/anky2901/A-J-ai-Coder)
+[![Email](https://img.shields.io/badge/Email-ajaysharma29014117%40gmail.com-red)](mailto:ajaysharma29014117@gmail.com)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](LICENSE)
+
+**Created by Ajay Sharma**
+
+📅 **Development Phase**: July 26, 2025 - December 3, 2025  
+🚀 **Final Build**: December 3, 2025
 
 </div>
 
-![mux product screenshot](docs/img/product-hero.webp)
+![A J AI Coder product screenshot](docs/img/product-hero.webp)
 
-A desktop application for parallel agentic development.
+A desktop application for parallel agentic development with **live preview** and multi-model AI support.
+
+## ✨ Key Features
+
+- **🔴 Live Preview Panel** - Real-time preview of HTML, CSS, JS, Python, images & binaries (< 20ms latency)
+- **Isolated workspaces** with central view on git divergence
+  - **Local**: run directly in your project directory
+  - **Worktree**: git worktrees on your local machine
+  - **SSH**: remote execution on a server over SSH
+- **Multi-model** support (`Claude Sonnet-4`, `GPT-5`, `Grok`, `Ollama`)
+- **AI-aware preview** - Agent knows what's displayed in live preview
+- **Professional dark theme** with smooth animations
+- Rich markdown outputs (mermaid diagrams, LaTeX, etc.)
 
 <details>
 <summary>Why parallelize?</summary>

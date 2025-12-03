@@ -1,16 +1,25 @@
 {
-  "name": "mux",
-  "version": "0.8.5",
-  "description": "mux - coder multiplexer",
-  "author": "Coder",
+  "name": "aj-ai-coder",
+  "version": "1.0.0",
+  "description": "A J AI Coder - Professional AI-Powered IDE with Live Preview | Development: July 26, 2025 - December 3, 2025 | Final Build: December 3, 2025",
+  "author": {
+    "name": "Ajay Sharma",
+    "email": "ajaysharma29014117@gmail.com",
+    "url": "https://github.com/anky2901"
+  },
+  "developmentPhase": {
+    "start": "2025-07-26",
+    "end": "2025-12-03",
+    "finalBuild": "2025-12-03"
+  },
   "main": "dist/cli/index.js",
   "bin": {
-    "mux": "dist/cli/index.js"
+    "ajcoder": "dist/cli/index.js"
   },
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coder/mux.git"
+    "url": "git+https://github.com/anky2901/A-J-ai-Coder.git"
   },
   "publishConfig": {
     "access": "public"
@@ -195,10 +204,12 @@
     "LICENSE"
   ],
   "build": {
-    "appId": "com.mux.app",
-    "productName": "mux",
+    "appId": "com.ajaicoder.app",
+    "productName": "A J AI Coder",
     "publish": {
       "provider": "github",
+      "owner": "anky2901",
+      "repo": "A-J-ai-Coder",
       "releaseType": "release"
     },
     "directories": {
