@@ -367,7 +367,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, "../preload.js"),
     },
-    title: "mux - coder multiplexer",
+    title: "A J AI Coder",
     // Hide menu bar on Linux by default (like VS Code)
     // User can press Alt to toggle it
     autoHideMenuBar: process.platform === "linux",
