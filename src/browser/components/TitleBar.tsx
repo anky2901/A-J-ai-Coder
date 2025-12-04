@@ -260,7 +260,7 @@ export function TitleBar() {
           </TooltipWrapper>
         )}
         <div className="min-w-0 cursor-text truncate text-xs font-normal tracking-wider select-text">
-          mux {gitDescribe ?? "(dev)"}
+          A J AI Coder {gitDescribe ?? "(dev)"}
         </div>
       </div>
       <div className="flex items-center gap-3">
