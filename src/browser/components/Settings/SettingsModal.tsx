@@ -1,11 +1,11 @@
 import React, { useEffect, useCallback } from "react";
-import { Settings, Key, Cpu, X } from "lucide-react";
+import { Settings, Key, Cpu, X, Info } from "lucide-react";
 import { useSettings } from "@/browser/contexts/SettingsContext";
 import { ModalOverlay } from "@/browser/components/Modal";
 import { matchesKeybind, KEYBINDS } from "@/browser/utils/ui/keybinds";
 import { GeneralSection } from "./sections/GeneralSection";
 import { ProvidersSection } from "./sections/ProvidersSection";
-import { ModelsSection } from "./sections/ModelsSection";
+import { ModelsSection } from "./sections/ModelsSection";`nimport { AboutSection } from "./sections/AboutSection";
 import type { SettingsSection } from "./types";
 
 const SECTIONS: SettingsSection[] = [
