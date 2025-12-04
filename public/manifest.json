@@ -1,6 +1,6 @@
 {
-  "name": "mux - coder multiplexer",
-  "short_name": "mux",
+  "name": "A J AI Coder",
+  "short_name": "A J AI Coder",
   "description": "Parallel agentic development with Electron + React",
   "start_url": "/",
   "display": "standalone",
