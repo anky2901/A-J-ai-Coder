@@ -367,7 +367,8 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, "../preload.js"),
     },
-    title: "A J AI Coder",\n    icon: path.join(__dirname, "../../build/icon.ico"),
+    title: "A J AI Coder",
+    icon: path.join(__dirname, "../../build/icon.ico"),
     // Hide menu bar on Linux by default (like VS Code)
     // User can press Alt to toggle it
     autoHideMenuBar: process.platform === "linux",
